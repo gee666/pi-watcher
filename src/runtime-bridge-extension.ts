@@ -144,7 +144,7 @@ export default function piWatcherBridge(pi: ExtensionAPI): void {
 		name: LIVE_MAIN_TOOLS_TOOL,
 		label: "Live main tools",
 		description:
-			"Show what the MAIN pi agent is doing right now: tool calls currently running or just finished in the main session, which may not be in the main session file yet. Read-only. Pass toolCallId for one call's details, limit to cap the number of calls returned.",
+			`Show the MAIN agent's currently running tools (read-only). Its transcript is ${JSON.stringify(config.mainSessionFile)}; read that literal path for history, not your own PI_SESSION_FILE. Pass toolCallId for one call's details, limit to cap the number of calls returned.`,
 		promptSnippet: "Live view of the main agent's running/recent tool calls (read-only)",
 		parameters: Type.Object({
 			toolCallId: Type.Optional(Type.String({ description: "Return details for this main-session tool call id only" })),
@@ -225,13 +225,15 @@ export default function piWatcherBridge(pi: ExtensionAPI): void {
 		});
 	});
 
-	pi.on("before_agent_start", async (event) => {
+	pi.on("before_agent_start", async (event, ctx) => {
 		const options = event.systemPromptOptions as { sections?: Record<string, string> };
 		options.sections = {
 			...(options.sections ?? {}),
 			[WATCHER_SECTION_KEY]: buildWatcherSystemPrompt({
 				mainSessionFile: config.mainSessionFile,
 				mainSessionId: config.mainSessionId,
+				sideSessionFile: ctx.sessionManager.getSessionFile(),
+				sideSessionId: ctx.sessionManager.getSessionId(),
 				cwd: config.cwd,
 				piDocsDir: config.piDocsDir,
 				capabilities: config.capabilities,

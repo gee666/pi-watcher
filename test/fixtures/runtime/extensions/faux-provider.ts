@@ -11,6 +11,12 @@ function lastUserText(messages: any[]): string {
 }
 
 export default function (pi: ExtensionAPI) {
+	let sideSessionFile = "<unset>";
+	let sideSessionId = "<unset>";
+	pi.on("session_start", (_event, ctx) => {
+		sideSessionFile = ctx.sessionManager.getSessionFile() ?? "<unset>";
+		sideSessionId = ctx.sessionManager.getSessionId();
+	});
 	const faux = fauxProvider({ provider: "faux", models: [{ id: "faux-1" }, { id: "faux-2" }] });
 	const respond = (context: any) => {
 		const messages = context.messages as any[];
@@ -26,7 +32,12 @@ export default function (pi: ExtensionAPI) {
 		}
 		if (prompt.startsWith("SYSPROMPT")) {
 			const all = JSON.stringify(messages);
-			const ok = all.includes("You are Watcher, the SIDE AGENT") && all.includes(process.env.FIXTURE_MAIN_FILE ?? "<unset>");
+			const ok = all.includes("You are Watcher, the SIDE AGENT") &&
+				all.includes(process.env.FIXTURE_MAIN_FILE ?? "<unset>") &&
+				all.includes(sideSessionFile) && all.includes(sideSessionId) &&
+				all.includes("PI_SESSION_FILE and PI_SESSION_ID") &&
+				all.includes("YOUR Watcher session, NOT the MAIN agent") &&
+				all.includes("The MAIN path above is authoritative");
 			return fauxAssistantMessage(ok ? "SYSPROMPT_OK" : "SYSPROMPT_MISSING");
 		}
 		return fauxAssistantMessage(`echo: ${prompt}`);

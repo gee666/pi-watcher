@@ -2,7 +2,7 @@
 
 A persistent side-agent conversation for your running [Pi](https://pi.dev) agent.
 
-**Package:** `oira666_pi-watcher` · **Version:** `0.0.1` · **License:** MIT
+**Package:** `oira666_pi-watcher` · **Version:** `0.0.2` · **License:** MIT
 
 ## Install
 
@@ -61,7 +61,7 @@ Its system prompt names the **main session JSONL path**, session ID, and the two
 - **`live_main_tools`**: current running tools, elapsed time, short input/output previews, and the main branch leaf ID.
 - **`steer_main`**: human-approved messages to the main agent.
 
-It uses the inherited file reader for session history. The prompt tells it to read **only session files and live tool data** by default—not source code, tests, git, or other checks. It must not redo or verify the main agent's work unless you specifically ask. The same rule applies even though inherited tools remain available.
+It uses the inherited file reader for session history. The prompt explicitly distinguishes the authoritative main transcript from Watcher's own session file: `PI_SESSION_FILE` and `PI_SESSION_ID` in Watcher's shell refer to Watcher, not the main agent. It reads the supplied main path directly rather than searching session directories. The prompt tells it to read **only session files and live tool data** by default—not source code, tests, git, or other checks. It must not redo or verify the main agent's work unless you specifically ask. The same rule applies even though inherited tools remain available.
 
 The live tracker keeps at most **64 in-flight calls**, each with tiny previews. It stores no transcript or full tool results, uses no polling timer, and deletes a call immediately when it ends. Completed history belongs in Pi's session file. Live text/model streams without tool calls are not recorded by the tracker.
 

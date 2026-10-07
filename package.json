@@ -1,17 +1,38 @@
 {
   "name": "oira666_pi-watcher",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A persistent side-agent conversation for observing and steering your running Pi agent.",
   "type": "module",
   "license": "MIT",
   "author": "gee666",
-  "repository": { "type": "git", "url": "git+https://github.com/gee666/pi-watcher.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gee666/pi-watcher.git"
+  },
   "homepage": "https://github.com/gee666/pi-watcher#readme",
-  "bugs": { "url": "https://github.com/gee666/pi-watcher/issues" },
-  "keywords": ["pi-package", "pi", "agent", "watcher"],
-  "engines": { "node": ">=22.19.0" },
-  "files": ["src/", "README.md", "LICENSE", "watcher-settings.example.json"],
-  "pi": { "extensions": ["./src/index.ts"] },
+  "bugs": {
+    "url": "https://github.com/gee666/pi-watcher/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "agent",
+    "watcher"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "watcher-settings.example.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
   "scripts": {
     "check": "tsc --noEmit",
     "test": "node --test test/*.test.ts test/*.test.cjs",
