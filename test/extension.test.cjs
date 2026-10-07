@@ -8,13 +8,23 @@ const jiti = createJiti(__filename);
 const tick = () => new Promise(r => setTimeout(r, 20));
 async function until(fn) { const deadline = Date.now() + 20000; while (!fn()) { if (Date.now() > deadline) throw Error("Timed out"); await tick(); } }
 
-test("/watcher integrates idle open, questions, history, models, live tools and approved steering", { timeout: 90000 }, async () => {
+test("/watcher opens before slow startup; integrates questions, history, models, live tools and approved steering", { timeout: 90000 }, async (t) => {
   const root = mkdtempSync(join(tmpdir(), "watcher-extension-"));
   const agent = join(root, "agent"); const cwd = join(root, "project");
   mkdirSync(agent); mkdirSync(cwd);
   // Put the inherited provider outside the watcher package, which is deliberately excluded.
   cpSync(join(__dirname, "fixtures/runtime/extensions/faux-provider.ts"), join(agent, "faux.ts"));
-  writeFileSync(join(agent, "settings.json"), JSON.stringify({ defaultProvider: "faux", defaultModel: "faux-1", extensions: [join(agent, "faux.ts")] }));
+  const gate = join(root, "startup-release");
+  const slowExtension = join(agent, "slow.ts");
+  writeFileSync(slowExtension, `import { existsSync } from "node:fs";
+    export default function(pi) { pi.on("session_start", async () => {
+      const deadline = Date.now() + 20000;
+      while (!existsSync(${JSON.stringify(gate)})) {
+        if (Date.now() > deadline) throw new Error("Startup gate timed out");
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+    }); }`);
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ defaultProvider: "faux", defaultModel: "faux-1", extensions: [join(agent, "faux.ts"), slowExtension] }));
   const id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
   const main = join(cwd, "main.jsonl");
   writeFileSync(main, JSON.stringify({ type: "session", version: 3, id, cwd, timestamp: new Date().toISOString() }) + "\n");
@@ -50,15 +60,27 @@ test("/watcher integrates idle open, questions, history, models, live tools and 
     assert.deepEqual([...commands.keys()], ["watcher"]);
     await handlers.get("session_start")({}, ctx);
     const cmd = commands.get("watcher").handler;
+    const openedAt = performance.now();
     const first = cmd("", ctx);
     await until(() => overlay);
-    assert.equal(store.state.side.status, "idle");
+    t.diagnostic(`Cold overlay visible after ${Math.round(performance.now() - openedAt)} ms (child initialization still blocked)`);
+    assert.equal(store.state.side.status, "starting", "panel must not await inherited extension initialization");
     assert.equal(store.state.messages.length, 0, "bare /watcher must never prompt");
+    for (const ch of "cancel me") overlay.handleInput(ch);
+    overlay.handleInput("\r");
+    assert.equal(store.state.side.status, "running", "questions can be submitted before a model is loaded");
+    for (const ch of "/stop") overlay.handleInput(ch);
+    overlay.handleInput("\r");
+    await until(() => store.state.side.status === "starting");
     overlay.handleInput("\x1b"); await first;
     assert.equal(abortedMain, false);
 
     const ask = cmd("hello", ctx);
+    await until(() => overlay);
+    assert.equal(store.state.model, undefined, "question is queued, not sent, before startup completes");
+    writeFileSync(gate, "ready");
     await until(() => overlay && store.state.side.status === "idle" && store.state.messages.some(m => m.text === "echo: hello"));
+    assert.ok(!store.state.messages.some(m => m.text.includes("cancel me")), "cancelled startup question must never be sent");
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
     overlay.handleInput("\x1b"); await ask;
     const again = cmd("", ctx); await until(() => overlay);

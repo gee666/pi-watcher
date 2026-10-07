@@ -21,7 +21,7 @@ export interface WatcherModelRef {
 	name?: string;
 }
 
-export type WatcherSideStatus = "idle" | "running" | "stopping" | "error";
+export type WatcherSideStatus = "starting" | "idle" | "running" | "stopping" | "error";
 
 export interface WatcherSideState {
 	status: WatcherSideStatus;

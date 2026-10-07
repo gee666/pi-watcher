@@ -29,6 +29,8 @@ pi -e ./src/index.ts
 
 These are human-facing TUI commands, not tools exposed to the main agent. They work while the main agent is running, including during compaction.
 
+The panel opens immediately while the side process initializes its inherited extensions and MCPs in the background. You can type straight away; a submitted question waits for initialization and is sent once ready. `/stop` cancels a question waiting for startup. Opening without a question still sends no prompt. Saved history and the selected model appear when initialization finishes; reopening an already initialized side agent reuses it.
+
 Inside the overlay:
 
 - Type a question and press **Enter**. Use **Shift+Enter** for a newline.

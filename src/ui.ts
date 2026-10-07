@@ -353,7 +353,7 @@ export class WatcherOverlay implements Component, Focusable {
 			this.setNotice("Side agent is busy. Wait, or /stop to cancel it (draft kept).", "warn");
 			return;
 		}
-		if (!this.store.state.model) {
+		if (!this.store.state.model && this.store.state.side.status !== "starting") {
 			this.restoreDraft(raw);
 			this.setNotice("No side model selected. Use /model.", "warn");
 			return;
@@ -669,7 +669,7 @@ export class WatcherOverlay implements Component, Focusable {
 	private sideStatusLine(): string {
 		const th = this.theme;
 		const s = this.store.state.side;
-		const color = s.status === "running" ? "warning" : s.status === "stopping" ? "warning" : s.status === "error" ? "error" : "success";
+		const color = s.status === "starting" || s.status === "running" || s.status === "stopping" ? "warning" : s.status === "error" ? "error" : "success";
 		let txt = `${th.fg("muted", "side")} ${th.fg(color, "●")} ${th.fg(color, s.status)}`;
 		if (s.activity && (s.status === "running" || s.status === "stopping")) txt += th.fg("dim", ` · ${oneLine(s.activity, 40)}`);
 		if (s.status === "error" && s.error) txt += th.fg("error", ` · ${oneLine(s.error, 60)}`);

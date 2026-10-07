@@ -14,6 +14,8 @@ interface Side {
   store: WatcherStore;
   controller: WatcherController;
   ready: Promise<void>;
+  startupError?: string;
+  pendingQuestion?: { text: string };
   lifetime: AbortController;
   overlay?: AbortController;
   dialogCount: number;
@@ -38,6 +40,7 @@ export default function watcher(pi: ExtensionAPI): void {
     if (!isCurrent(s)) return;
     const waiting = s.store.state.approvals.length > 0;
     const state = waiting ? "approval pending — /watcher" : s.dialogCount ? "dialog pending" :
+      s.runtime.status === "starting" || s.runtime.status === "idle" ? "starting…" :
       s.store.state.side.status === "running" ? "working" : s.store.state.side.status === "error" ? "error — /watcher" :
       s.store.state.open ? "idle" : "ready — /watcher";
     if (s.lastStatus !== state) {
@@ -164,8 +167,7 @@ export default function watcher(pi: ExtensionAPI): void {
   async function ensure(ctx: ExtensionContext): Promise<Side> {
     current = ctx;
     const id = ctx.sessionManager.getSessionId();
-    if (side && side.id === id && side.runtime.status !== "exited" && side.runtime.status !== "disposed") {
-      await side.ready;
+    if (side && side.id === id && !side.startupError && side.runtime.status !== "exited" && side.runtime.status !== "disposed") {
       return side;
     }
     await dispose();
@@ -180,17 +182,30 @@ export default function watcher(pi: ExtensionAPI): void {
       controller: {
         async submit(text) {
           if (!isCurrent(s)) throw new Error("Main session changed. Reopen /watcher.");
+          const pending = { text };
+          s.pendingQuestion = pending;
+          await s.ready;
+          if (!isCurrent(s) || s.pendingQuestion !== pending) return;
+          s.pendingQuestion = undefined;
           const disposition = await runtime.prompt(text);
           if (disposition === "handled") store.endTurn();
         },
         async stop() {
+          if (s.pendingQuestion) {
+            s.pendingQuestion = undefined;
+            store.endTurn();
+            if (!store.state.model) store.setSide({ status: "starting" });
+            return;
+          }
           // Abort alone can continue queued work in Pi. Clear only the SIDE queue first.
           await runtime.clearQueue();
           await runtime.abort();
           store.endTurn({ aborted: true });
         },
-        async listModels() { return runtime.getAvailableModels(); },
+        async listModels() { await s.ready; return runtime.getAvailableModels(); },
         async setModel(model) {
+          await s.ready;
+          if (!isCurrent(s)) throw new Error("Main session changed. Reopen /watcher.");
           if (runtime.isBusy) throw new Error("Stop the Watcher reply before changing its model.");
           await runtime.setModel(model.provider, model.id);
         },
@@ -200,8 +215,11 @@ export default function watcher(pi: ExtensionAPI): void {
     s.unsubscribe = runtime.subscribe((e) => event(s, e));
     s.unsubscribeStore = store.subscribe(() => status(s));
     mainStatus();
-    ctx.ui.setStatus("pi-watcher", "Watcher: starting…");
+    store.setSide({ status: "starting" });
     s.ready = (async () => {
+      // Let the overlay mount before doing child discovery/spawn or waiting for extensions/MCPs.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      if (!isCurrent(s)) return;
       const info = await runtime.start({
         cwd: ctx.cwd, mainSessionFile, mainSessionId: id,
         sessionDir: settings.sessionDir, excludedExtensions: settings.excludedExtensions,
@@ -232,15 +250,27 @@ export default function watcher(pi: ExtensionAPI): void {
         onUiRequest: (request, { signal }) => extensionDialog(s, request, signal),
       });
       if (!isCurrent(s)) { await runtime.dispose(); return; }
-      store.setMessages(messagesToTranscript(await runtime.getMessages()));
-      const state = await runtime.getState();
+      const [messages, state] = await Promise.all([runtime.getMessages(), runtime.getState()]);
+      if (!isCurrent(s)) return;
+      store.setMessages(messagesToTranscript(messages));
+      // The user can submit while startup is in progress. Preserve that unsent question
+      // when replacing the initial empty display with the restored conversation.
+      if (s.pendingQuestion) store.addMessage("user", s.pendingQuestion.text);
       store.setModel(state.model ?? undefined);
-      store.setSide({ status: runtime.isBusy ? "running" : "idle" });
+      store.setSide({ status: runtime.isBusy || s.pendingQuestion ? "running" : "idle" });
       for (const warning of info.warnings) ctx.ui.notify(`Watcher: ${warning}`, "warning");
       status(s);
     })();
-    try { await s.ready; } catch (error) { if (side === s) await dispose(); throw error; }
-    if (!isCurrent(s)) throw new Error("Main session changed while Watcher was starting.");
+    // Observe failures even when no question/model request awaits readiness. Keep the
+    // panel open so errors are visible, and allow the next /watcher to retry startup.
+    void s.ready.catch((error) => {
+      if (!isCurrent(s)) return;
+      s.startupError = errorText(error);
+      s.pendingQuestion = undefined;
+      store.endTurn({ error: s.startupError });
+      ctx.ui.notify(`Watcher: ${s.startupError}`, "error");
+      void runtime.dispose();
+    });
     return s;
   }
 
