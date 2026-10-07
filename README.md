@@ -7,7 +7,7 @@ A persistent side-agent conversation for your running [Pi](https://pi.dev) agent
 ## Install
 
 ```sh
-pi install git:github.com/gee666/pi-watcher
+pi install npm:oira666_pi-watcher
 ```
 
 Then restart Pi or run `/reload`. Requires Node.js **22.19+** and the modular Pi installation. Tested against **Pi 1.0.4**; the child launcher depends on that version's package-manager loading interfaces. Standalone compiled Pi binaries are not supported.
