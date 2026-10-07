@@ -404,10 +404,6 @@ export class WatcherOverlay implements Component, Focusable {
 	// ---- model picker ----------------------------------------------------------------------
 
 	private openPicker(filter: string): void {
-		if (this.sideBusy()) {
-			this.setNotice("Cannot change the side model while the side agent is running. /stop first.", "warn");
-			return;
-		}
 		this.mode = "model";
 		this.pickerFilter = filter;
 		this.pickerList = undefined;
@@ -492,11 +488,6 @@ export class WatcherOverlay implements Component, Focusable {
 
 	private chooseModel(model: WatcherModelRef | undefined): void {
 		if (!model) return;
-		if (this.sideBusy()) {
-			this.closePicker();
-			this.setNotice("Side agent started running; model not changed. /stop first.", "warn");
-			return;
-		}
 		if (this.modelChanging) return;
 		const cur = this.store.state.model;
 		this.closePicker();

@@ -100,12 +100,23 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     const steer = cmd("STEER", ctx);
     await until(() => overlay && store.state.approvals.length === 1);
     assert.equal(sent.length, 0, "approval required");
+    // The side agent is still executing steer_main, awaiting approval. Switch its
+    // model through the actual command/controller/RPC path without cancelling it.
+    overlay.handleInput("\x1b"); await steer;
+    const switchRunning = cmd("model", ctx);
+    await until(() => overlay && overlay.mode === "model" && !overlay.pickerLoading);
+    for (const ch of "faux-2") overlay.handleInput(ch);
+    overlay.handleInput("\r");
+    await until(() => store.state.model?.id === "faux-2");
+    assert.equal(store.state.side.status, "running");
+    assert.equal(store.state.approvals.length, 1);
+    assert.equal(sent.length, 0);
     const approval = store.state.approvals[0];
     store.resolveApproval(approval.id, { action: "send", text: "inspect logs first", edited: true });
     await until(() => sent.length === 1 && store.state.side.status === "idle");
     assert.match(sent[0].text, /\[Watcher — approved by you\] inspect logs first/);
     assert.deepEqual(sent[0].opts, { deliverAs: "steer" });
-    overlay.handleInput("\x1b"); await steer;
+    overlay.handleInput("\x1b"); await switchRunning;
     assert.equal(abortedMain, false);
     assert.ok(!notifications.some(n => /Watcher: .*Error/.test(n)), notifications.join("\n"));
   } finally {

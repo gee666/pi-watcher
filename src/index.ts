@@ -206,7 +206,6 @@ export default function watcher(pi: ExtensionAPI): void {
         async setModel(model) {
           await s.ready;
           if (!isCurrent(s)) throw new Error("Main session changed. Reopen /watcher.");
-          if (runtime.isBusy) throw new Error("Stop the Watcher reply before changing its model.");
           await runtime.setModel(model.provider, model.id);
         },
       },

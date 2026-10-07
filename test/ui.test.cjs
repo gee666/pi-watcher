@@ -101,18 +101,10 @@ test("no model -> submit refused", () => {
 	assert.match(e.text(o), /No side model/);
 });
 
-test("/stop cancels side only; /model refused while running; picker selects model", async () => {
+test("/model switches while running without stopping; /stop cancels side only", async () => {
 	const e = setup();
 	const o = e.mk();
 	e.store.beginTurn("q");
-	e.cmd(o, "/model");
-	assert.match(e.text(o), /Cannot change/);
-	e.cmd(o, "/stop");
-	assert.deepEqual(e.calls.at(-1), ["stop"]);
-	assert.equal(e.store.state.side.status, "stopping");
-	e.store.appendLive("partial");
-	e.store.endTurn({ aborted: true });
-	assert.equal(e.store.state.side.status, "idle");
 	e.cmd(o, "/model");
 	await tick();
 	let t = e.text(o);
@@ -124,6 +116,14 @@ test("/stop cancels side only; /model refused while running; picker selects mode
 	await tick();
 	assert.deepEqual(e.calls.at(-1), ["setModel", "m2"]);
 	assert.equal(e.store.state.model.id, "m2");
+	assert.equal(e.store.state.side.status, "running");
+	assert.ok(!e.calls.some(c => c[0] === "stop"));
+	e.cmd(o, "/stop");
+	assert.deepEqual(e.calls.at(-1), ["stop"]);
+	assert.equal(e.store.state.side.status, "stopping");
+	e.store.appendLive("partial");
+	e.store.endTurn({ aborted: true });
+	assert.equal(e.store.state.side.status, "idle");
 	// Esc in picker goes back, does not close
 	e.cmd(o, "/model");
 	await tick();

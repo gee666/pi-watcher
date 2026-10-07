@@ -35,7 +35,7 @@ Inside the overlay:
 
 - Type a question and press **Enter**. Use **Shift+Enter** for a newline.
 - **Esc** returns to the main view without stopping either agent. Run `/watcher` again to return; conversation, draft, and scroll position are retained.
-- `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. Stop a running side reply before changing models.
+- `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. You can change models while the side agent is running, just like in Pi; switching does not abort the current reply.
 - `/stop` cancels only the side agent and clears its queued messages.
 - `/help` shows controls. **Page Up/Down**, **Ctrl+Home/End**, or the mouse wheel scroll the conversation.
 - A footer status reports replies/approvals while the overlay is closed.
