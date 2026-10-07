@@ -38,7 +38,7 @@ Inside the overlay:
 - `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. You can change models while the side agent is running, just like in Pi; switching does not abort the current reply.
 - `/stop` cancels only the side agent and clears its queued messages.
 - `/help` shows controls. **Page Up/Down**, **Ctrl+Home/End**, or the mouse wheel scroll the conversation.
-- A footer status reports replies/approvals while the overlay is closed.
+- Watcher never modifies the main status bar. Reopen the overlay to see pending approvals; finished replies can trigger a notification.
 
 A question passed to `/watcher` while the side agent is already replying is saved as a draft rather than silently queued. The overlay displays the latest 120 messages; older history remains in the side session file and model conversation.
 

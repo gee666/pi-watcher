@@ -19,10 +19,8 @@ interface Side {
   lifetime: AbortController;
   overlay?: AbortController;
   dialogCount: number;
-  lastStatus?: string;
   dialogQueue: Promise<unknown>;
   unsubscribe?: () => void;
-  unsubscribeStore?: () => void;
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
@@ -35,18 +33,6 @@ export default function watcher(pi: ExtensionAPI): void {
 
   function isCurrent(s: Side): boolean {
     return side === s && !s.lifetime.signal.aborted && current?.sessionManager.getSessionId() === s.id;
-  }
-  function status(s: Side): void {
-    if (!isCurrent(s)) return;
-    const waiting = s.store.state.approvals.length > 0;
-    const state = waiting ? "approval pending — /watcher" : s.dialogCount ? "dialog pending" :
-      s.runtime.status === "starting" || s.runtime.status === "idle" ? "starting…" :
-      s.store.state.side.status === "running" ? "working" : s.store.state.side.status === "error" ? "error — /watcher" :
-      undefined;
-    if (s.lastStatus !== state) {
-      s.lastStatus = state;
-      s.ctx.ui.setStatus("pi-watcher", state ? `Watcher: ${state}` : undefined);
-    }
   }
   function mainStatus(): void {
     if (!side || !current) return;
@@ -61,7 +47,6 @@ export default function watcher(pi: ExtensionAPI): void {
       await openWatcherUI(s.ctx, { store: s.store, controller: s.controller, title: "Watcher", signal: s.overlay.signal, initialAction });
     } finally {
       s.lifetime.signal.removeEventListener("abort", close);
-      status(s);
     }
   }
 
@@ -98,7 +83,6 @@ export default function watcher(pi: ExtensionAPI): void {
       } finally {
         s.dialogCount--;
         if (reopen && isCurrent(s)) void show(s).catch((e) => s.ctx.ui.notify(errorText(e), "error"));
-        status(s);
       }
     };
     const result = s.dialogQueue.then(run, run);
@@ -159,8 +143,6 @@ export default function watcher(pi: ExtensionAPI): void {
     old.overlay?.abort();
     old.store.dispose();
     old.unsubscribe?.();
-    old.unsubscribeStore?.();
-    old.ctx.ui.setStatus("pi-watcher", undefined);
     await old.runtime.dispose();
   }
 
@@ -212,7 +194,6 @@ export default function watcher(pi: ExtensionAPI): void {
     };
     side = s;
     s.unsubscribe = runtime.subscribe((e) => event(s, e));
-    s.unsubscribeStore = store.subscribe(() => status(s));
     mainStatus();
     store.setSide({ status: "starting" });
     s.ready = (async () => {
@@ -258,7 +239,6 @@ export default function watcher(pi: ExtensionAPI): void {
       store.setModel(state.model ?? undefined);
       store.setSide({ status: runtime.isBusy || s.pendingQuestion ? "running" : "idle" });
       for (const warning of info.warnings) ctx.ui.notify(`Watcher: ${warning}`, "warning");
-      status(s);
     })();
     // Observe failures even when no question/model request awaits readiness. Keep the
     // panel open so errors are visible, and allow the next /watcher to retry startup.
