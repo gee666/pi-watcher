@@ -1,0 +1,35 @@
+{
+  "name": "oira666_pi-watcher",
+  "version": "0.0.1",
+  "description": "A persistent side-agent conversation for observing and steering your running Pi agent.",
+  "type": "module",
+  "license": "MIT",
+  "author": "gee666",
+  "repository": { "type": "git", "url": "git+https://github.com/gee666/pi-watcher.git" },
+  "homepage": "https://github.com/gee666/pi-watcher#readme",
+  "bugs": { "url": "https://github.com/gee666/pi-watcher/issues" },
+  "keywords": ["pi-package", "pi", "agent", "watcher"],
+  "engines": { "node": ">=22.19.0" },
+  "files": ["src/", "README.md", "LICENSE", "watcher-settings.example.json"],
+  "pi": { "extensions": ["./src/index.ts"] },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test test/*.test.ts test/*.test.cjs",
+    "prepack": "npm run check && npm test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-agent-core": "1.0.4",
+    "@earendil-works/pi-coding-agent": "1.0.4",
+    "@earendil-works/pi-tui": "1.0.4",
+    "@types/node": "^22.19.0",
+    "jiti": "^2.6.1",
+    "typescript": "^5.9.3"
+  }
+}

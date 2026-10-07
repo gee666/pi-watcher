@@ -1,0 +1,22 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# Local development and agent scratch files
+tmp/
+.pi/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+
+# Never commit conversations, credentials, or local watcher settings
+*.jsonl
+pi-watcher.json
+pi-watcher-sessions/
+auth.json
