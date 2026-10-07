@@ -42,10 +42,10 @@ export default function watcher(pi: ExtensionAPI): void {
     const state = waiting ? "approval pending — /watcher" : s.dialogCount ? "dialog pending" :
       s.runtime.status === "starting" || s.runtime.status === "idle" ? "starting…" :
       s.store.state.side.status === "running" ? "working" : s.store.state.side.status === "error" ? "error — /watcher" :
-      s.store.state.open ? "idle" : "ready — /watcher";
+      undefined;
     if (s.lastStatus !== state) {
       s.lastStatus = state;
-      s.ctx.ui.setStatus("pi-watcher", `Watcher: ${state}`);
+      s.ctx.ui.setStatus("pi-watcher", state ? `Watcher: ${state}` : undefined);
     }
   }
   function mainStatus(): void {

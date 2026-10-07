@@ -37,14 +37,14 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     sendUserMessage: (text, opts) => sent.push({ text, opts }),
   };
   const theme = { fg: (_c,t)=>t, bg: (_c,t)=>t, bold:t=>t, italic:t=>t, underline:t=>t, inverse:t=>t, strikethrough:t=>t };
-  let overlay; let store; let abortedMain = false;
+  let overlay; let store; let abortedMain = false; let watcherStatus;
   const ctx = {
     mode: "tui", hasUI: true, cwd, isIdle: () => false, isProjectTrusted: () => false,
     abort: () => { abortedMain = true; },
     sessionManager: { getSessionId: () => id, getSessionFile: () => main, getLeafId: () => "leaf-1" },
     modelRegistry: { getAvailable: () => [] },
     ui: {
-      setStatus() {}, notify: (text) => notifications.push(text),
+      setStatus(key, text) { if (key === "pi-watcher") watcherStatus = text; }, notify: (text) => notifications.push(text),
       custom: (factory) => new Promise(resolve => {
         const component = factory({ terminal: { rows: 35, columns: 140 }, requestRender() {} }, theme, {}, result => {
           component.dispose(); if (overlay === component) overlay = undefined; resolve(result);
@@ -83,6 +83,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     assert.ok(!store.state.messages.some(m => m.text.includes("cancel me")), "cancelled startup question must never be sent");
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
     overlay.handleInput("\x1b"); await ask;
+    assert.equal(watcherStatus, undefined, "idle/ready watcher must not clutter the status bar");
     const again = cmd("", ctx); await until(() => overlay);
     assert.ok(store.state.messages.some(m => m.text === "echo: hello"));
     overlay.handleInput("\x1b"); await again;
