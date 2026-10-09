@@ -5,7 +5,7 @@
  */
 import { stripTerminalSequences } from "@earendil-works/pi-tui";
 import { messageNumbers } from "./ui-render.ts";
-import type { WatcherMessage } from "./ui-types.ts";
+import type { WatcherLiveState, WatcherMessage } from "./ui-types.ts";
 
 export const COPY_USAGE = "/copy [me] [n|all] — e.g. /copy (last Watcher reply), /copy 3 (Watcher #3), /copy me (your last), /copy me 2, /copy all";
 
@@ -19,7 +19,12 @@ function clean(text: string): string {
 }
 
 /** Resolve `/copy` arguments against the stored conversation. */
-export function selectForCopy(messages: ReadonlyArray<WatcherMessage>, args: string): CopySelection {
+export function selectForCopy(messages: ReadonlyArray<WatcherMessage>, args: string, live?: WatcherLiveState): CopySelection {
+	// Copy a snapshot of the visible reply without committing it to history.
+	if (live?.text) {
+		const prefix = live.truncated ? "… (earlier output not retained)\n" : "";
+		messages = [...messages, { role: "assistant", text: prefix + live.text }];
+	}
 	const words = args.trim().toLowerCase().split(/\s+/).filter(Boolean);
 	let role: "user" | "assistant" = "assistant";
 	let which: "last" | "all" | number = "last";

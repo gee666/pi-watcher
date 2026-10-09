@@ -113,6 +113,7 @@ export class WatcherOverlay implements Component, Focusable {
 	private mode: Mode = "chat";
 	private editor: Editor;
 	private approvalEditor?: Editor;
+	private commandEditor?: Editor;
 	private approvalId?: string;
 	private approvalSel = 1; // 0 send, 1 edit (default, no accidental send), 2 cancel
 
@@ -181,9 +182,10 @@ export class WatcherOverlay implements Component, Focusable {
 	}
 
 	private syncEditorFocus(): void {
-		const chat = this.mode === "chat" && !this.currentApproval();
+		const chat = !this.commandEditor && this.mode === "chat" && !this.currentApproval();
 		this.editor.focused = this._focused && chat;
-		if (this.approvalEditor) this.approvalEditor.focused = this._focused && this.mode === "approval-edit";
+		if (this.approvalEditor) this.approvalEditor.focused = this._focused && !this.commandEditor && this.mode === "approval-edit";
+		if (this.commandEditor) this.commandEditor.focused = this._focused;
 	}
 
 	// ---- lifecycle -------------------------------------------------------------------------
@@ -195,6 +197,7 @@ export class WatcherOverlay implements Component, Focusable {
 		this.renderer.invalidate();
 		this.editor.invalidate();
 		this.approvalEditor?.invalidate();
+		this.commandEditor?.invalidate();
 		this.pickerList?.invalidate();
 	}
 
@@ -319,7 +322,10 @@ export class WatcherOverlay implements Component, Focusable {
 			this.notice = undefined;
 			this.requestRender();
 		}
-		if (this.mode === "model") {
+		if (this.commandEditor) {
+			if (this.isClose(data)) this.commandEditor = undefined;
+			else this.commandEditor.handleInput(data);
+		} else if (this.mode === "model") {
 			this.handlePickerInput(data);
 		} else if (this.mode === "approval-edit") {
 			this.handleApprovalEditInput(data);
@@ -354,10 +360,7 @@ export class WatcherOverlay implements Component, Focusable {
 		const cmd = /^\/(model|stop|help|copy)(?:\s+([\s\S]*))?$/.exec(text);
 		if (cmd) {
 			this.clearEditor();
-			if (cmd[1] === "model") this.openPicker((cmd[2] ?? "").trim());
-			else if (cmd[1] === "stop") this.doStop();
-			else if (cmd[1] === "copy") this.doCopy(cmd[2] ?? "");
-			else this.setNotice(`Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · ${COPY_USAGE} · Ctrl+W / Esc close (main agent untouched)`);
+			this.runLocalCommand(cmd[1], cmd[2] ?? "");
 			return;
 		}
 		if (this.sideBusy()) {
@@ -390,8 +393,29 @@ export class WatcherOverlay implements Component, Focusable {
 		this.store.setDraft("");
 	}
 
+	private runLocalCommand(command: string, args: string): void {
+		if (command === "model") this.openPicker(args.trim());
+		else if (command === "stop") this.doStop();
+		else if (command === "copy") this.doCopy(args);
+		else this.setNotice(`Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · ${COPY_USAGE} · Ctrl+W / Esc close (main agent untouched)`);
+	}
+
+	/** Allow local commands while an approval owns the normal input controls. */
+	private openCommandEditor(): void {
+		const editor = new Editor(this.tui, this.editorTheme(), { paddingX: 0 });
+		editor.setText("/");
+		editor.onSubmit = (raw) => {
+			const cmd = /^\/(model|stop|help|copy)(?:\s+([\s\S]*))?$/.exec(raw.trim());
+			if (cmd) {
+				this.commandEditor = undefined;
+				this.runLocalCommand(cmd[1], cmd[2] ?? "");
+			} else editor.setText(raw);
+		};
+		this.commandEditor = editor;
+	}
+
 	private doCopy(args: string): void {
-		const sel = selectForCopy(this.store.state.messages, args);
+		const sel = selectForCopy(this.store.state.messages, args, this.store.state.live);
 		if (!sel.ok) {
 			this.setNotice(sel.error, "warn");
 			return;
@@ -554,6 +578,10 @@ export class WatcherOverlay implements Component, Focusable {
 	}
 
 	private handleApprovalInput(data: string): void {
+		if (data === "/" || decodeKittyPrintable(data) === "/") {
+			this.openCommandEditor();
+			return;
+		}
 		const a = this.currentApproval();
 		if (!a) return;
 		if (this.isClose(data)) {
@@ -735,7 +763,9 @@ export class WatcherOverlay implements Component, Focusable {
 		const approval = this.currentApproval();
 		const editorCap = Math.max(3, Math.min(8, Math.floor(H * 0.35)));
 
-		if (this.mode === "model") {
+		if (this.commandEditor) {
+			for (const l of this.capEditorLines(this.commandEditor.render(inner), editorCap)) lines.push(frame(l));
+		} else if (this.mode === "model") {
 			lines.push(frame(` ${th.fg("accent", th.bold("Select side model"))} ${th.fg("dim", "(independent of main)")}`));
 			lines.push(frame(` ${th.fg("muted", "filter:")} ${this.pickerFilter}${th.fg("dim", "▏")}`));
 			if (this.pickerLoading) lines.push(frame(th.fg("dim", "  loading models…")));

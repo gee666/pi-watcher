@@ -286,6 +286,57 @@ test("openWatcherUI: open flag, already-open, unsupported, signal, initialAction
 	assert.equal(e.store.state.open, false);
 });
 
+test("copy commands work while running and include a snapshot of streaming text", async () => {
+	for (const status of ["starting", "running", "stopping"]) {
+		const copied = [];
+		const e = setup({ messages: [{ role: "user", text: "my command" }, { role: "assistant", text: "previous reply" }] });
+		const o = e.mk({ copyText: async text => { copied.push(text); } });
+		e.store.setSide({ status });
+		e.cmd(o, "/copy"); await tick();
+		assert.equal(copied.at(-1), "previous reply");
+		e.store.appendLive("current partial reply");
+		for (const command of ["/copy", "/copy last", "/copy 2"]) {
+			e.cmd(o, command); await tick();
+			assert.equal(copied.at(-1), "current partial reply");
+		}
+		e.cmd(o, "/copy me"); await tick();
+		assert.equal(copied.at(-1), "my command");
+		e.cmd(o, "/copy 1"); await tick();
+		assert.equal(copied.at(-1), "previous reply");
+		e.cmd(o, "/copy all"); await tick();
+		assert.match(copied.at(-1), /## Watcher #2\n\ncurrent partial reply/);
+		e.store.appendLive(" more");
+		assert.ok(!copied.at(-1).endsWith(" more\n"), "clipboard is a snapshot");
+		assert.equal(e.store.state.messages.length, 2, "copy must not commit streaming text");
+		assert.equal(e.store.state.side.status, status);
+		assert.deepEqual(e.calls, []);
+		o.dispose(); e.store.dispose();
+	}
+});
+
+test("local copy commands remain available during approval without sending or cancelling it", async () => {
+	const copied = [];
+	const e = setup({ draft: "keep my draft", messages: [{ role: "user", text: "my command" }, { role: "assistant", text: "last reply" }] });
+	const o = e.mk({ copyText: async text => { copied.push(text); } });
+	e.store.setSide({ status: "running" });
+	let decided = false;
+	e.store.requestSteeringApproval({ text: "Run tests" }).then(() => { decided = true; });
+	for (const [command, expected] of [["/copy", "last reply"], ["/copy me", "my command"]]) {
+		for (const ch of command) o.handleInput(ch);
+		o.handleInput("\r"); await tick();
+		assert.equal(copied.at(-1), expected);
+		assert.equal(e.store.state.draft, "keep my draft");
+		assert.equal(e.store.state.approvals.length, 1);
+		assert.equal(decided, false);
+		assert.deepEqual(e.calls, []);
+	}
+	o.handleInput("/"); o.handleInput("\x1b");
+	assert.equal(e.result, undefined, "Esc returns from command entry to approval");
+	o.handleInput("c"); o.handleInput("\r"); await tick();
+	assert.equal(decided, true, "approval controls still work after command entry");
+	o.dispose(); e.store.dispose();
+});
+
 test("/copy copies last/nth Watcher reply, your messages, or everything; numbers are shown", async () => {
 	const copied = [];
 	let fail = false;
