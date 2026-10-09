@@ -258,3 +258,37 @@ test("openWatcherUI: open flag, already-open, unsupported, signal, initialAction
 	assert.equal((await pr2).reason, "aborted");
 	assert.equal(e.store.state.open, false);
 });
+
+test("/copy copies last/nth Watcher reply, your messages, or everything; numbers are shown", async () => {
+	const copied = [];
+	let fail = false;
+	const e = setup({ messages: [
+		{ role: "user", text: "q1" }, { role: "assistant", text: "**a1**" }, { role: "tool", text: "bash\nok" },
+		{ role: "user", text: "q2" }, { role: "assistant", text: "a2\nline" },
+	] });
+	const o = e.mk({ copyText: async (t) => { if (fail) throw new Error("no clipboard"); copied.push(t); } });
+	const view = e.text(o, 90);
+	assert.match(view, /You #2/);
+	assert.match(view, /Watcher #1/);
+	e.cmd(o, "/copy"); await tick();
+	assert.equal(copied.at(-1), "a2\nline");
+	assert.match(e.text(o, 90), /Copied Watcher #2/);
+	e.cmd(o, "/copy 1"); await tick();
+	assert.equal(copied.at(-1), "**a1**");
+	e.cmd(o, "/copy me"); await tick();
+	assert.equal(copied.at(-1), "q2");
+	e.cmd(o, "/copy me #1"); await tick();
+	assert.equal(copied.at(-1), "q1");
+	e.cmd(o, "/copy all"); await tick();
+	assert.equal(copied.at(-1), "## You #1\n\nq1\n\n## Watcher #1\n\n**a1**\n\n> ⚙ bash\n> ok\n\n## You #2\n\nq2\n\n## Watcher #2\n\na2\nline\n");
+	const n = copied.length;
+	e.cmd(o, "/copy 7"); await tick();
+	assert.equal(copied.length, n);
+	assert.match(e.text(o, 90), /No Watcher #7/);
+	e.cmd(o, "/copy bogus"); await tick();
+	assert.match(e.text(o, 90), /Unknown \/copy argument/);
+	fail = true;
+	e.cmd(o, "/copy"); await tick();
+	assert.match(e.text(o, 90), /Copy failed: no clipboard/);
+	assert.equal(e.calls.filter((c) => c[0] === "submit").length, 0, "/copy never prompts the side agent");
+});

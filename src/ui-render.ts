@@ -28,7 +28,18 @@ function fit(lines: string[], width: number): string[] {
 
 interface MsgCacheEntry {
 	width: number;
+	number: number;
 	lines: string[];
+}
+
+/**
+ * 1-based per-role number of each message (user and assistant counted separately; tool entries get 0).
+ * Shown as "You #n" / "Watcher #n" and used by `/copy`.
+ */
+export function messageNumbers(messages: ReadonlyArray<WatcherMessage>): number[] {
+	let user = 0;
+	let assistant = 0;
+	return messages.map((m) => (m.role === "user" ? ++user : m.role === "assistant" ? ++assistant : 0));
 }
 
 export class TranscriptRenderer {
@@ -67,11 +78,13 @@ export class TranscriptRenderer {
 		const theme = this.getTheme();
 		const lines: string[] = [];
 		if (start > 0) lines.push(theme.fg("dim", truncateToWidth(`… ${start} earlier message${start === 1 ? "" : "s"} not shown`, width, "…")), "");
+		const numbers = messageNumbers(messages);
 		for (let i = start; i < total; i++) {
 			const m = messages[i]!;
+			const number = numbers[i]!;
 			let entry = this.msgCache.get(m);
-			if (!entry || entry.width !== width) {
-				entry = { width, lines: this.renderMessage(m, width) };
+			if (!entry || entry.width !== width || entry.number !== number) {
+				entry = { width, number, lines: this.renderMessage(m, width, number) };
 				this.msgCache.set(m, entry);
 			}
 			for (const l of entry.lines) lines.push(l);
@@ -80,16 +93,16 @@ export class TranscriptRenderer {
 		return lines;
 	}
 
-	private renderMessage(m: WatcherMessage, width: number): string[] {
+	private renderMessage(m: WatcherMessage, width: number, number: number): string[] {
 		const theme = this.getTheme();
 		const { text, cut } = sanitizeText(m.text, WATCHER_LIMITS.maxRenderedMessageChars);
 		const note = cut ? [theme.fg("dim", "  … (message truncated)")] : [];
 		const out: string[] = [];
 		if (m.role === "user") {
-			out.push(theme.fg("accent", theme.bold("You")));
+			out.push(theme.fg("accent", theme.bold("You")) + theme.fg("dim", ` #${number}`));
 			for (const l of wrapTextWithAnsi(text, Math.max(1, width - 2))) out.push(`  ${l}`);
 		} else if (m.role === "assistant") {
-			out.push(theme.fg("success", theme.bold("Watcher")));
+			out.push(theme.fg("success", theme.bold("Watcher")) + theme.fg("dim", ` #${number}`));
 			const md = new Markdown(text, 1, 0, getMarkdownTheme());
 			for (const l of md.render(width)) out.push(l);
 		} else {

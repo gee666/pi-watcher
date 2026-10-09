@@ -1,6 +1,6 @@
 {
   "name": "oira666_pi-watcher",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A persistent side-agent conversation for observing and steering your running Pi agent.",
   "type": "module",
   "license": "MIT",

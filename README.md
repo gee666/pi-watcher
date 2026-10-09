@@ -2,7 +2,7 @@
 
 A persistent side-agent conversation for your running [Pi](https://pi.dev) agent.
 
-**Package:** `oira666_pi-watcher` · **Version:** `0.0.2` · **License:** MIT
+**Package:** `oira666_pi-watcher` · **Version:** `0.0.3` · **License:** MIT
 
 ## Install
 
@@ -37,6 +37,12 @@ Inside the overlay:
 - **Esc** returns to the main view without stopping either agent. Run `/watcher` again to return; conversation, draft, and scroll position are retained.
 - `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. You can change models while the side agent is running, just like in Pi; switching does not abort the current reply.
 - `/stop` cancels only the side agent and clears its queued messages.
+- `/copy` copies to the system clipboard, because terminal mouse selection spans the full terminal width. Messages are numbered in the transcript (`You #n`, `Watcher #n`):
+  - `/copy`: last Watcher reply · `/copy 3`: Watcher #3
+  - `/copy me`: your last message · `/copy me 2`: You #2
+  - `/copy all`: the whole side conversation as Markdown
+
+  It uses Pi's clipboard support (native clipboard, `wl-copy`/`xclip`/`xsel`, or OSC 52 over SSH). Copying never sends a prompt.
 - `/help` shows controls. **Page Up/Down**, **Ctrl+Home/End**, or the mouse wheel scroll the conversation.
 - Watcher never modifies the main status bar. Reopen the overlay to see pending approvals; finished replies can trigger a notification.
 

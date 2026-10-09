@@ -5,7 +5,7 @@
  * this module renders the store, collects input, and calls WatcherController callbacks.
  * It never aborts the main agent and never performs steering itself.
  */
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import { copyToClipboard, type Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
 	Editor,
@@ -24,6 +24,7 @@ import {
 	wrapTextWithAnsi,
 	decodeKittyPrintable,
 } from "@earendil-works/pi-tui";
+import { COPY_USAGE, selectForCopy } from "./ui-copy.ts";
 import { TranscriptRenderer, sanitizeText } from "./ui-render.ts";
 import { WatcherStore } from "./ui-store.ts";
 import {
@@ -37,7 +38,8 @@ import {
 
 export * from "./ui-types.ts";
 export { WatcherStore, normalizeMessage, type EndTurnOptions, type WatcherStoreInit } from "./ui-store.ts";
-export { TranscriptRenderer, sanitizeText } from "./ui-render.ts";
+export { TranscriptRenderer, sanitizeText, messageNumbers } from "./ui-render.ts";
+export { selectForCopy, COPY_USAGE, type CopySelection } from "./ui-copy.ts";
 
 export interface OpenWatcherUIOptions {
 	store: WatcherStore;
@@ -48,6 +50,8 @@ export interface OpenWatcherUIOptions {
 	signal?: AbortSignal;
 	/** "model": open the side-model picker immediately (e.g. `/watcher model`). Never sends a prompt. */
 	initialAction?: "model";
+	/** Clipboard writer used by `/copy`. Default: Pi's copyToClipboard. */
+	copyText?: (text: string) => Promise<void>;
 }
 
 type Mode = "chat" | "model" | "approval-edit";
@@ -102,6 +106,7 @@ export class WatcherOverlay implements Component, Focusable {
 	private title: string;
 	private done: (r: WatcherUIResult) => void;
 	private renderer: TranscriptRenderer;
+	private copyText: (text: string) => Promise<void>;
 
 	private _focused = false;
 	private closed = false;
@@ -144,6 +149,7 @@ export class WatcherOverlay implements Component, Focusable {
 		this.title = options.title ?? "Watcher";
 		this.done = done;
 		this.renderer = new TranscriptRenderer(() => this.theme);
+		this.copyText = options.copyText ?? copyToClipboard;
 
 		this.editor = new Editor(tui, this.editorTheme(), { paddingX: 0 });
 		if (this.store.state.draft) this.editor.setText(this.store.state.draft);
@@ -340,12 +346,13 @@ export class WatcherOverlay implements Component, Focusable {
 	private onEditorSubmit(raw: string): void {
 		const text = raw.trim();
 		if (!text) return;
-		const cmd = /^\/(model|stop|help)(?:\s+([\s\S]*))?$/.exec(text);
+		const cmd = /^\/(model|stop|help|copy)(?:\s+([\s\S]*))?$/.exec(text);
 		if (cmd) {
 			this.clearEditor();
 			if (cmd[1] === "model") this.openPicker((cmd[2] ?? "").trim());
 			else if (cmd[1] === "stop") this.doStop();
-			else this.setNotice("Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · Esc close (main agent untouched)");
+			else if (cmd[1] === "copy") this.doCopy(cmd[2] ?? "");
+			else this.setNotice(`Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · ${COPY_USAGE} · Esc close (main agent untouched)`);
 			return;
 		}
 		if (this.sideBusy()) {
@@ -376,6 +383,23 @@ export class WatcherOverlay implements Component, Focusable {
 	private clearEditor(): void {
 		this.editor.setText("");
 		this.store.setDraft("");
+	}
+
+	private doCopy(args: string): void {
+		const sel = selectForCopy(this.store.state.messages, args);
+		if (!sel.ok) {
+			this.setNotice(sel.error, "warn");
+			return;
+		}
+		this.guarded(
+			async () => {
+				await this.copyText(sel.text);
+				if (!this.closed) this.setNotice(`Copied ${sel.label} (${sel.text.length.toLocaleString("en-US")} chars)`);
+			},
+			(err) => {
+				if (!this.closed) this.setNotice(`Copy failed: ${errMsg(err)}`, "error");
+			},
+		);
 	}
 
 	private doStop(): void {
@@ -685,8 +709,8 @@ export class WatcherOverlay implements Component, Focusable {
 		if (this.mode === "model") txt = "type filter · ↑↓ · Enter select · Esc back";
 		else if (this.mode === "approval-edit") txt = "Enter send edited · Shift+Enter newline · Esc back";
 		else if (this.currentApproval()) txt = "←/→ select · Enter confirm · Esc close (stays pending)";
-		else if (inner >= 70) txt = "Enter send · ⇧Enter newline · PgUp/PgDn scroll · /model · /stop · Esc close";
-		else if (inner >= 44) txt = "Enter send · PgUp/PgDn · /model · /stop · Esc";
+		else if (inner >= 76) txt = "Enter send · ⇧Enter newline · PgUp/PgDn scroll · /model · /copy · /stop · Esc close";
+		else if (inner >= 50) txt = "Enter send · PgUp/PgDn · /model · /copy · /stop · Esc";
 		else txt = "Enter send · Esc close";
 		return th.fg("dim", ` ${txt}`);
 	}
@@ -698,7 +722,7 @@ export class WatcherOverlay implements Component, Focusable {
 		if (this.notice) {
 			const color = this.notice.level === "error" ? "error" : this.notice.level === "warn" ? "warning" : "accent";
 			const { text } = sanitizeText(this.notice.text, 600);
-			const wrapped = wrapTextWithAnsi(text, Math.max(1, inner - 3)).slice(0, 3);
+			const wrapped = wrapTextWithAnsi(text, Math.max(1, inner - 3)).slice(0, 5);
 			wrapped.forEach((l, i) => lines.push(frame(` ${th.fg(color, i === 0 ? "! " : "  ")}${th.fg(color, l)}`)));
 		}
 
