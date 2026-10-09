@@ -30,10 +30,11 @@ test("/watcher opens before slow startup; integrates questions, history, models,
   writeFileSync(main, JSON.stringify({ type: "session", version: 3, id, cwd, timestamp: new Date().toISOString() }) + "\n");
   const oldEnv = { ...process.env };
   Object.assign(process.env, { PI_CODING_AGENT_DIR: agent, PI_OFFLINE: "1", PI_SKIP_VERSION_CHECK: "1", FIXTURE_MAIN_FILE: main });
-  const handlers = new Map(); const commands = new Map(); const sent = []; const notifications = [];
+  const handlers = new Map(); const commands = new Map(); const shortcuts = new Map(); const sent = []; const notifications = [];
   const pi = {
     on: (name, fn) => { handlers.set(name, fn); return () => {}; },
     registerCommand: (name, cmd) => commands.set(name, cmd),
+    registerShortcut: (key, shortcut) => shortcuts.set(key, shortcut),
     sendUserMessage: (text, opts) => sent.push({ text, opts }),
   };
   const theme = { fg: (_c,t)=>t, bg: (_c,t)=>t, bold:t=>t, italic:t=>t, underline:t=>t, inverse:t=>t, strikethrough:t=>t };
@@ -61,7 +62,11 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     await handlers.get("session_start")({}, ctx);
     const cmd = commands.get("watcher").handler;
     const openedAt = performance.now();
-    const first = cmd("", ctx);
+    assert.deepEqual([...shortcuts.keys()], ["ctrl+w"]);
+    const toggle = shortcuts.get("ctrl+w").handler;
+    await toggle({ ...ctx, mode: "rpc" });
+    assert.equal(overlay, undefined);
+    const first = toggle(ctx);
     await until(() => overlay);
     t.diagnostic(`Cold overlay visible after ${Math.round(performance.now() - openedAt)} ms (child initialization still blocked)`);
     assert.equal(store.state.side.status, "starting", "panel must not await inherited extension initialization");
@@ -72,7 +77,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     for (const ch of "/stop") overlay.handleInput(ch);
     overlay.handleInput("\r");
     await until(() => store.state.side.status === "starting");
-    overlay.handleInput("\x1b"); await first;
+    overlay.handleInput("\x17"); await first;
     assert.equal(abortedMain, false);
 
     const ask = cmd("hello", ctx);
@@ -84,9 +89,13 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
     overlay.handleInput("\x1b"); await ask;
     assert.deepEqual(statusCalls, [], "Watcher must never touch the status bar");
-    const again = cmd("", ctx); await until(() => overlay);
+    const savedStore = store;
+    const again = toggle(ctx); await until(() => overlay);
+    assert.equal(store, savedStore, "toggle must reuse the side conversation");
     assert.ok(store.state.messages.some(m => m.text === "echo: hello"));
-    overlay.handleInput("\x1b"); await again;
+    assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
+    await toggle(ctx); await again;
+    assert.equal(overlay, undefined);
 
     const choose = cmd("model", ctx); await until(() => overlay && overlay.mode === "model");
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1, "model picker is not a prompt");

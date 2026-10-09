@@ -269,6 +269,20 @@ export default function watcher(pi: ExtensionAPI): void {
   pi.on("session_compact", () => { compacting = false; mainStatus(); });
   pi.on("session_compact_failed", () => { compacting = false; mainStatus(); });
 
+  pi.registerShortcut("ctrl+w", {
+    description: "Toggle the Watcher panel",
+    handler: async (ctx) => {
+      if (ctx.mode !== "tui" || !ctx.hasUI) return;
+      try {
+        if (side && isCurrent(side) && side.store.state.open) {
+          side.overlay?.abort();
+          return;
+        }
+        await show(await ensure(ctx));
+      } catch (error) { ctx.ui.notify(`Watcher: ${errorText(error)}`, "error"); }
+    },
+  });
+
   pi.registerCommand("watcher", {
     description: "Open the side agent; /watcher <question> to ask; /watcher model to choose its model",
     handler: async (args, ctx) => {

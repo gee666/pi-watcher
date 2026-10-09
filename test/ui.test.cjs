@@ -91,6 +91,33 @@ test("opens idle without prompting; submit, busy refusal keeps draft, close pers
 	assert.match(e.text(o2), /again/); // draft restored
 });
 
+test("Ctrl+W closes every Watcher view without stopping or resolving approvals", async () => {
+	for (const key of ["\x17", "\x1b[119;5u"]) {
+		for (const mode of ["chat", "model", "approval", "approval-edit"]) {
+			const e = setup({ draft: "keep this draft", view: { follow: false, top: 3 } });
+			const o = e.mk(mode === "model" ? { initialAction: "model" } : {});
+			e.store.setSide({ status: "running" });
+			let decided = false;
+			if (mode.startsWith("approval")) {
+				e.store.requestSteeringApproval({ text: "Run tests" }).then(() => { decided = true; });
+				o.render(70);
+				if (mode === "approval-edit") o.handleInput("\r");
+			}
+			o.handleInput(key);
+			await tick();
+			assert.equal(e.result.reason, "closed", `${mode}: ${JSON.stringify(key)}`);
+			assert.equal(e.store.state.draft, "keep this draft");
+			assert.equal(e.store.state.side.status, "running");
+			assert.equal(decided, false);
+			assert.deepEqual(e.calls, []);
+			const reopened = e.mk();
+			assert.equal(e.store.state.draft, "keep this draft");
+			reopened.dispose();
+			e.store.dispose();
+		}
+	}
+});
+
 test("no model -> submit refused", () => {
 	const e = setup();
 	e.store.setModel(undefined);
