@@ -269,7 +269,7 @@ export default function watcher(pi: ExtensionAPI): void {
   pi.on("session_compact", () => { compacting = false; mainStatus(); });
   pi.on("session_compact_failed", () => { compacting = false; mainStatus(); });
 
-  pi.registerShortcut("ctrl+w", {
+  pi.registerShortcut("alt+w", {
     description: "Toggle the Watcher panel",
     handler: async (ctx) => {
       if (ctx.mode !== "tui" || !ctx.hasUI) return;

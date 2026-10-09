@@ -91,8 +91,8 @@ test("opens idle without prompting; submit, busy refusal keeps draft, close pers
 	assert.match(e.text(o2), /again/); // draft restored
 });
 
-test("Ctrl+W closes every Watcher view without stopping or resolving approvals", async () => {
-	for (const key of ["\x17", "\x1b[119;5u"]) {
+test("Alt+W closes every Watcher view without stopping or resolving approvals", async () => {
+	for (const key of ["\x1bw", "\x1b[119;3u"]) {
 		for (const mode of ["chat", "model", "approval", "approval-edit"]) {
 			const e = setup({ draft: "keep this draft", view: { follow: false, top: 3 } });
 			const o = e.mk(mode === "model" ? { initialAction: "model" } : {});

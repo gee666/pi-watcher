@@ -62,8 +62,8 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     await handlers.get("session_start")({}, ctx);
     const cmd = commands.get("watcher").handler;
     const openedAt = performance.now();
-    assert.deepEqual([...shortcuts.keys()], ["ctrl+w"]);
-    const toggle = shortcuts.get("ctrl+w").handler;
+    assert.deepEqual([...shortcuts.keys()], ["alt+w"]);
+    const toggle = shortcuts.get("alt+w").handler;
     await toggle({ ...ctx, mode: "rpc" });
     assert.equal(overlay, undefined);
     const first = toggle(ctx);
@@ -77,7 +77,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     for (const ch of "/stop") overlay.handleInput(ch);
     overlay.handleInput("\r");
     await until(() => store.state.side.status === "starting");
-    overlay.handleInput("\x17"); await first;
+    overlay.handleInput("\x1bw"); await first;
     assert.equal(abortedMain, false);
 
     const ask = cmd("hello", ctx);

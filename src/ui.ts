@@ -314,7 +314,7 @@ export class WatcherOverlay implements Component, Focusable {
 	handleInput(data: string): void {
 		if (this.closed) return;
 		// Focused overlays own input, so the main editor's shortcut cannot close us.
-		if (matchesKey(data, "ctrl+w")) {
+		if (matchesKey(data, "alt+w")) {
 			this.close("closed");
 			return;
 		}
@@ -397,7 +397,7 @@ export class WatcherOverlay implements Component, Focusable {
 		if (command === "model") this.openPicker(args.trim());
 		else if (command === "stop") this.doStop();
 		else if (command === "copy") this.doCopy(args);
-		else this.setNotice(`Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · ${COPY_USAGE} · Ctrl+W / Esc close (main agent untouched)`);
+		else this.setNotice(`Enter send · Shift+Enter newline · PgUp/PgDn scroll · /model [filter] · /stop · ${COPY_USAGE} · Alt+W / Esc close (main agent untouched)`);
 	}
 
 	/** Allow local commands while an approval owns the normal input controls. */
@@ -745,7 +745,7 @@ export class WatcherOverlay implements Component, Focusable {
 		else if (inner >= 76) txt = "Enter send · ⇧Enter newline · PgUp/PgDn scroll · /model · /copy · /stop · Esc close";
 		else if (inner >= 50) txt = "Enter send · PgUp/PgDn · /model · /copy · /stop · Esc";
 		else txt = "Enter send · Esc close";
-		txt = `Ctrl+W close · ${txt}`;
+		txt = `Alt+W close · ${txt}`;
 		return th.fg("dim", ` ${txt}`);
 	}
 

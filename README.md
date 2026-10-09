@@ -23,12 +23,10 @@ pi -e ./src/index.ts
 
 | Command | Action |
 | --- | --- |
-| **Ctrl+W** | Toggle the Watcher panel without sending a prompt or stopping either agent. |
+| **Alt+W** | Toggle the Watcher panel without sending a prompt or stopping either agent. |
 | `/watcher` | Create/resume the side agent and show its conversation. **Sends no prompt.** |
 | `/watcher Why is it retrying?` | Open and send exactly that question. |
 | `/watcher model` | Open the side agent's model picker. Does not prompt either agent. |
-
-Ctrl+W replaces Pi's usual delete-word-left shortcut while Watcher is loaded.
 
 These are human-facing TUI controls, not tools exposed to the main agent. They work while the main agent is running, including during compaction.
 
@@ -37,7 +35,7 @@ The panel opens immediately while the side process initializes its inherited ext
 Inside the overlay:
 
 - Type a question and press **Enter**. Use **Shift+Enter** for a newline.
-- **Ctrl+W** closes the panel from any Watcher view. Press it again to reopen. **Esc** also returns from chat to the main view without stopping either agent. Conversation, draft, and scroll position are retained.
+- **Alt+W** closes the panel from any Watcher view. Press it again to reopen. **Esc** also returns from chat to the main view without stopping either agent. Conversation, draft, and scroll position are retained.
 - `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. You can change models while the side agent is running, just like in Pi; switching does not abort the current reply.
 - `/stop` cancels only the side agent and clears its queued messages.
 - `/copy` copies to the system clipboard, because terminal mouse selection spans the full terminal width. Messages are numbered in the transcript (`You #n`, `Watcher #n`):
