@@ -103,6 +103,8 @@ export interface PiLocation {
 	packageDir: string;
 	/** Module exporting `main` and `DefaultPackageManager` (bundle index, else unbundled index). */
 	entry: string;
+	/** Executable Pi CLI for extensions that spawn process.argv[1]. */
+	cliEntry: string;
 	docsDir?: string;
 }
 
@@ -138,8 +140,16 @@ export function locatePi(options: { piPackageDir?: string; argv?: readonly strin
 			existsSync(f),
 		);
 		if (!entry) continue;
+		const bin = readJson(join(packageDir, "package.json"))?.bin;
+		const piBin = typeof bin === "string" ? bin : (bin as Record<string, unknown> | undefined)?.pi;
+		const cliEntry = [
+			...(typeof piBin === "string" ? [resolve(packageDir, piBin)] : []),
+			join(packageDir, "dist", "bundle", "cli.js"),
+			join(packageDir, "dist", "cli.js"),
+		].find((f) => existsSync(f));
+		if (!cliEntry) continue;
 		const docsDir = join(packageDir, "docs");
-		return { packageDir, entry, docsDir: existsSync(docsDir) ? docsDir : undefined };
+		return { packageDir, entry, cliEntry, docsDir: existsSync(docsDir) ? docsDir : undefined };
 	}
 	throw new Error(
 		`Cannot locate the ${PI_PACKAGE_NAME} package (tried: ${candidates.join(", ") || "none"}). Pass piPackageDir or set PI_PACKAGE_DIR.`,

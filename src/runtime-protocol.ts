@@ -26,6 +26,8 @@ export interface ChildConfig {
 	version: 1;
 	/** Absolute path of the pi module exporting `main` and `DefaultPackageManager` (bundle/index.js). */
 	piEntry: string;
+	/** Executable Pi CLI exposed as process.argv[1] in the child. */
+	piCliEntry: string;
 	cwd: string;
 	mainSessionId: string;
 	mainSessionFile: string;

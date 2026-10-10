@@ -112,6 +112,28 @@ describe("WatcherRuntime (integration)", { skip: !piAvailable && "pi package not
 		assert.equal(rt.status, "disposed");
 	});
 
+	test("inherited extensions can launch a real Pi subagent through argv[1]", { timeout: TIMEOUT }, async () => {
+		const rt = await WatcherRuntime.start(baseOptions(sb));
+		const mainBefore = readFileSync(sb.mainSessionFile, "utf8");
+		try {
+			await rt.prompt("/fixture-launch-subagent");
+			const output = join(sb.cwd, "subagent-result.json");
+			const deadline = Date.now() + 25_000;
+			while (!existsSync(output)) {
+				assert.ok(Date.now() < deadline, "subagent launch did not finish");
+				await new Promise(resolve => setTimeout(resolve, 20));
+			}
+			const result = JSON.parse(readFileSync(output, "utf8"));
+			assert.equal(result.error, undefined, result.error);
+			assert.equal(result.cliEntry, locatePi().cliEntry);
+			assert.match(result.stdout, /echo: nested hello/);
+			assert.equal(readFileSync(sb.mainSessionFile, "utf8"), mainBefore);
+			assert.equal((await rt.getState()).sessionId, rt.info!.sideSessionId);
+		} finally {
+			await rt.dispose();
+		}
+	});
+
 	test("reopens the same side session (history kept, link matched), model change does not leak", { timeout: TIMEOUT * 2 }, async () => {
 		// options.model / thinkingLevel are initial defaults only: they must not reset the model the
 		// side session already uses (faux-2 from the first test).

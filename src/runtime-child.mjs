@@ -42,6 +42,10 @@ async function run() {
 		setTimeout(() => process.exit(0), 3000).unref();
 	});
 
+	// Inherited extensions launch subagents using execPath + argv[1]. Expose the real
+	// CLI before importing Pi or loading extensions, not this IPC-only bootstrap.
+	process.argv[1] = config.piCliEntry;
+
 	const pi = await import(pathToFileURL(config.piEntry).href);
 	const { DefaultPackageManager, main } = pi;
 	if (typeof main !== "function") throw new Error(`pi entry ${config.piEntry} does not export main()`);

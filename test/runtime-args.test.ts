@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	deriveSideSessionId,
 	inheritCliArgs,
@@ -98,6 +99,34 @@ test("readSessionHeader reads only the first line", () => {
 		assert.equal(readSessionHeader(join(dir, "missing.jsonl")), undefined);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("locatePi resolves an executable CLI separately from the imported module", () => {
+	const tmp = new URL("../tmp/", import.meta.url);
+	mkdirSync(tmp, { recursive: true });
+	const root = mkdtempSync(fileURLToPath(new URL("pi-location-", tmp)));
+	try {
+		mkdirSync(join(root, "dist", "bundle"), { recursive: true });
+		writeFileSync(join(root, "dist", "bundle", "index.js"), "export function main() {}");
+		const manifest = (bin: unknown) => writeFileSync(join(root, "package.json"), JSON.stringify({ name: "@earendil-works/pi-coding-agent", bin }));
+		const locate = () => locatePi({ argv: ["node", join(root, "dist", "cli.js")], env: {} });
+		manifest({ pi: "custom-cli.js" });
+		writeFileSync(join(root, "custom-cli.js"), "");
+		assert.equal(locate().cliEntry, join(root, "custom-cli.js"));
+		manifest("custom-cli.js");
+		assert.equal(locate().cliEntry, join(root, "custom-cli.js"));
+		manifest({ pi: "missing.js" });
+		writeFileSync(join(root, "dist", "cli.js"), "");
+		assert.equal(locate().cliEntry, join(root, "dist", "cli.js"));
+		writeFileSync(join(root, "dist", "bundle", "cli.js"), "");
+		assert.equal(locate().cliEntry, join(root, "dist", "bundle", "cli.js"));
+		assert.notEqual(locate().cliEntry, locate().entry);
+		rmSync(join(root, "dist", "bundle", "cli.js"));
+		rmSync(join(root, "dist", "cli.js"));
+		assert.throws(locate, /Cannot locate/, "the import-only index is not an executable CLI");
+	} finally {
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 

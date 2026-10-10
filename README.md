@@ -2,7 +2,7 @@
 
 A persistent side-agent conversation for your running [Pi](https://pi.dev) agent.
 
-**Package:** `oira666_pi-watcher` · **Version:** `0.0.5` · **License:** MIT
+**Package:** `oira666_pi-watcher` · **Version:** `0.0.6` · **License:** MIT
 
 ## Install
 

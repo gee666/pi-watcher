@@ -403,6 +403,7 @@ interface Resolved {
 	childEntry: string;
 	piPackageDir: string;
 	piEntry: string;
+	piCliEntry: string;
 	piDocsDir?: string;
 	nodePath: string;
 	baseArgs: string[];
@@ -787,6 +788,7 @@ export class WatcherRuntime {
 			childEntry,
 			piPackageDir: pi.packageDir,
 			piEntry: pi.entry,
+			piCliEntry: pi.cliEntry,
 			piDocsDir: pi.docsDir,
 			nodePath,
 			baseArgs: ["--session-dir", sessionDir, "--session-id", sideSessionId, "--extension", bridgePath],
@@ -804,6 +806,7 @@ export class WatcherRuntime {
 		const config: ChildConfig = {
 			version: 1,
 			piEntry: resolved.piEntry,
+			piCliEntry: resolved.piCliEntry,
 			cwd: resolved.cwd,
 			mainSessionId: options.mainSessionId,
 			mainSessionFile: resolved.mainSessionFile,
