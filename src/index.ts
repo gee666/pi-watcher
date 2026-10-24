@@ -1,10 +1,11 @@
-import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { copyToClipboard, getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { loadSettings } from "./config.ts";
 import { LiveTools } from "./live-tools.ts";
 import {
   isWatcherChildProcess, messagesToTranscript, WatcherRuntime,
   type UiDialogRequest, type UiDialogResponse, type WatcherRuntimeEvent,
 } from "./runtime.ts";
+import { deriveSideSessionId, findSideSessionFile, formatSideSessionCommand } from "./runtime-args.ts";
 import { openWatcherUI, WatcherStore, type WatcherController } from "./ui.ts";
 
 interface Side {
@@ -283,10 +284,24 @@ export default function watcher(pi: ExtensionAPI): void {
     },
   });
 
+  /** Copy `pi --session <side session file>` (opens it from any directory) and echo it dimmed. */
+  async function copySessionCommand(ctx: ExtensionContext): Promise<void> {
+    try {
+      const id = ctx.sessionManager.getSessionId();
+      const running = side && side.id === id ? side.runtime.info?.sideSessionFile : undefined;
+      const file = running ?? findSideSessionFile(loadSettings(getAgentDir()).sessionDir, deriveSideSessionId(id));
+      if (!file) { ctx.ui.notify("Watcher: no side session yet for this session. Open /watcher first.", "warning"); return; }
+      const command = formatSideSessionCommand(file);
+      await copyToClipboard(command);
+      ctx.ui.notify(`command copied: ${command}`, "info");
+    } catch (error) { ctx.ui.notify(`Watcher: could not copy command: ${errorText(error)}`, "error"); }
+  }
+
   pi.registerCommand("watcher", {
-    description: "Open the side agent; /watcher <question> to ask; /watcher model to choose its model",
+    description: "Open the side agent; /watcher <question> to ask; /watcher model to choose its model; /watcher command to copy a `pi --session` command for another terminal",
     handler: async (args, ctx) => {
       if (ctx.mode !== "tui") { ctx.ui.notify("/watcher is a human-only interactive terminal command.", "warning"); return; }
+      if (args.trim() === "command") { await copySessionCommand(ctx); return; }
       try {
         const s = await ensure(ctx);
         const question = args.trim();

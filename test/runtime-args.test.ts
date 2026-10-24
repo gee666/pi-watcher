@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
 	deriveSideSessionId,
+	formatSideSessionCommand,
 	inheritCliArgs,
 	isValidSessionId,
 	locatePi,
@@ -138,4 +139,13 @@ test("locatePi finds the installed pi package from argv or PI_PACKAGE_DIR", () =
 		// No pi in this environment: an explicit bogus dir must fail clearly.
 	}
 	assert.throws(() => locatePi({ piPackageDir: "/nonexistent", argv: ["node"], env: {} }), /Cannot locate/);
+});
+
+test("formatSideSessionCommand is one shell-safe line", () => {
+	assert.equal(
+		formatSideSessionCommand("/home/u/.pi/agent/pi-watcher-sessions/2026_watcher-abc.jsonl", "/home/u"),
+		"pi --session ~/.pi/agent/pi-watcher-sessions/2026_watcher-abc.jsonl",
+	);
+	assert.equal(formatSideSessionCommand("/srv/s/x.jsonl", "/home/u"), "pi --session /srv/s/x.jsonl");
+	assert.equal(formatSideSessionCommand("/home/u/my dir/it's.jsonl", "/home/u"), "pi --session '/home/u/my dir/it'\\''s.jsonl'");
 });

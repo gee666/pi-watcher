@@ -3,7 +3,8 @@
  * main-session header verification, pi package discovery.
  */
 
-import { closeSync, existsSync, openSync, readFileSync, readSync, realpathSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, realpathSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { BRIDGE_TOOL_NAMES } from "./runtime-protocol.ts";
 
@@ -19,6 +20,30 @@ export function deriveSideSessionId(mainSessionId: string): string {
 		.replace(/[^A-Za-z0-9]+$/, "");
 	if (!cleaned) throw new Error(`Cannot derive a side session id from main session id "${mainSessionId}"`);
 	return `watcher-${cleaned}`.slice(0, 200).replace(/[^A-Za-z0-9]+$/, "");
+}
+
+/**
+ * One-line shell command that opens the side session in another terminal: `pi --session <file>`.
+ * A file path (not an id) opens that exact session from any directory; pi switches to the
+ * session's cwd. The home directory is shown as `~` when that stays shell-safe, else single-quoted.
+ */
+export function formatSideSessionCommand(sessionFile: string, home = homedir()): string {
+	const safe = /^[A-Za-z0-9_@%+=:,./-]+$/;
+	let path = sessionFile;
+	if (home && path.startsWith(`${home}/`) && safe.test(path.slice(home.length))) path = `~${path.slice(home.length)}`;
+	else if (!safe.test(path)) path = `'${path.replace(/'/g, `'\\''`)}'`;
+	return `pi --session ${path}`;
+}
+
+/** Existing side session file `<timestamp>_<id>.jsonl` in a flat session dir, newest first. */
+export function findSideSessionFile(sessionDir: string, sideSessionId: string): string | undefined {
+	try {
+		const suffix = `_${sideSessionId}.jsonl`;
+		const hit = readdirSync(sessionDir).filter((f) => f.endsWith(suffix)).sort().pop();
+		return hit ? join(sessionDir, hit) : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export function isValidSessionId(id: string): boolean {

@@ -27,6 +27,7 @@ pi -e ./src/index.ts
 | `/watcher` | Create/resume the side agent and show its conversation. **Sends no prompt.** |
 | `/watcher Why is it retrying?` | Open and send exactly that question. |
 | `/watcher model` | Open the side agent's model picker. Does not prompt either agent. |
+| `/watcher command` | Copy `pi --session <side session file>` to the clipboard so you can open the watcher conversation in another terminal (works from any directory). |
 
 These are human-facing TUI controls, not tools exposed to the main agent. They work while the main agent is running, including during compaction.
 
