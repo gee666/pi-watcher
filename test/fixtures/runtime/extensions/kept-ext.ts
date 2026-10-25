@@ -1,10 +1,9 @@
 // Ordinary user extension: must be inherited by the side agent.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 
 export default function (pi: ExtensionAPI) {
 	const cliEntry = process.argv[1];
@@ -13,13 +12,20 @@ export default function (pi: ExtensionAPI) {
 		handler: async (_args, ctx) => {
 			let result;
 			try {
-				const pending = promisify(execFile)(process.execPath, [cliEntry,
-					"--print", "--no-session", "--no-extensions", "--no-mcp",
+				const child = spawn(process.execPath, [cliEntry,
+					"--print", "--session-dir", join(ctx.cwd, "nested-sessions"), "--no-extensions", "--no-mcp",
 					"--extension", fileURLToPath(new URL("./faux-provider.ts", import.meta.url)),
 					"--provider", "faux", "--model", "faux-1", "nested hello",
-				], { cwd: ctx.cwd, timeout: 20_000, encoding: "utf8" });
-				pending.child.stdin?.end();
-				result = { cliEntry, ...await pending };
+				], { cwd: ctx.cwd, timeout: 20_000, stdio: ["ignore", "pipe", "pipe"] });
+				let stdout = "";
+				let stderr = "";
+				child.stdout.setEncoding("utf8").on("data", chunk => { stdout += chunk; });
+				child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
+				await new Promise<void>((resolve, reject) => {
+					child.once("error", reject);
+					child.once("close", code => code === 0 ? resolve() : reject(new Error(`Pi exited ${code}: ${stderr}`)));
+				});
+				result = { cliEntry, stdout, stderr };
 			} catch (error) {
 				result = { cliEntry, error: String(error) };
 			}

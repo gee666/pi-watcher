@@ -1,11 +1,8 @@
 "use strict";
-// Run: node --test test/ui.test.cjs   (needs devDependencies: jiti, @earendil-works/pi-tui, @earendil-works/pi-coding-agent)
+// Run: node --test test/ui.test.cjs
 const { test, before } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { createJiti } = require("jiti");
-
-const jiti = createJiti(__filename, { interopDefault: true });
 const strip = (s) => s.replace(/\x1b\[[0-9;]*m|\x1b_pi:c\x07/g, "");
 const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,10 +12,10 @@ const theme = { fg: (_c, t) => t, bg: (_c, t) => t, bold: (t) => t, italic: (t) 
 let ui, visibleWidth;
 
 before(async () => {
-	const cc = await jiti.import("@earendil-works/pi-coding-agent");
+	const cc = await import("@earendil-works/pi-coding-agent");
 	cc.initTheme("dark"); // global markdown theme used by the transcript renderer
-	({ visibleWidth } = await jiti.import("@earendil-works/pi-tui"));
-	ui = await jiti.import(path.join(__dirname, "..", "src", "ui.ts"));
+	({ visibleWidth } = await import("@earendil-works/pi-tui"));
+	ui = await import(path.join(__dirname, "..", "src", "ui.ts"));
 });
 
 function setup(storeInit = {}) {
@@ -227,9 +224,10 @@ test("approval cancel via signal / dispose resolves cancel", async () => {
 test("scroll: follow, page up pins view, wheel, page down re-follows; render is capped and fast", () => {
 	const e = setup({ messages: Array.from({ length: 400 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", text: `line ${i} ${"lorem ipsum ".repeat(10)}` })) });
 	const o = e.mk();
-	const t0 = Date.now();
+	const t0 = process.cpuUsage();
 	o.render(80);
-	assert.ok(Date.now() - t0 < 1000);
+	const cpu = process.cpuUsage(t0);
+	assert.ok(cpu.user + cpu.system < 1_000_000);
 	assert.ok(e.store.state.view.follow);
 	o.handleInput("\x1b[5~");
 	assert.ok(!e.store.state.view.follow && e.store.state.view.top > 0);
@@ -246,10 +244,12 @@ test("scroll: follow, page up pins view, wheel, page down re-follows; render is 
 test("live streaming is capped and cheap", () => {
 	const e = setup();
 	const o = e.mk();
-	const t0 = Date.now();
+	// Measure work, not time spent descheduled on a shared CI host.
+	const t0 = process.cpuUsage();
 	for (let i = 0; i < 40; i++) { e.store.appendLive("streaming 日本語 🚀 ".repeat(100)); o.render(70); }
 	assert.ok(e.store.state.live.truncated && e.store.state.live.text.length <= 20000);
-	assert.ok(Date.now() - t0 < 3000);
+	const cpu = process.cpuUsage(t0);
+	assert.ok(cpu.user + cpu.system < 3_000_000);
 });
 
 test("dispose unsubscribes and is idempotent", () => {

@@ -25,6 +25,7 @@
   "files": [
     "src/",
     "README.md",
+    "EVERGREEN.md",
     "LICENSE",
     "watcher-settings.example.json"
   ],
@@ -37,6 +38,7 @@
     "check": "tsc --noEmit",
     "pretest": "npm install @earendil-works/pi-ai@latest @earendil-works/pi-agent-core@latest @earendil-works/pi-coding-agent@latest @earendil-works/pi-tui@latest --save-dev --ignore-scripts && npm run check",
     "test": "node --test test/*.test.ts test/*.test.cjs",
+    "test:evergreen": "node test/evergreen.mjs",
     "prepack": "npm run check && npm test"
   },
   "peerDependencies": {
@@ -51,7 +53,6 @@
     "@earendil-works/pi-coding-agent": "^1.4.0",
     "@earendil-works/pi-tui": "^1.4.0",
     "@types/node": "^22.19.0",
-    "jiti": "^2.6.1",
     "typescript": "^5.9.3"
   }
 }

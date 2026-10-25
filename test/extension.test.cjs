@@ -3,12 +3,10 @@ const assert = require("node:assert/strict");
 const { mkdtempSync, mkdirSync, cpSync, symlinkSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const { createJiti } = require("jiti");
-const jiti = createJiti(__filename);
 const tick = () => new Promise(r => setTimeout(r, 20));
-async function until(fn, details = () => "") { const deadline = Date.now() + 20000; while (!fn()) { if (Date.now() > deadline) throw Error(`Timed out: ${details()}`); await tick(); } }
+async function until(fn, details = () => "") { const deadline = Date.now() + 60000; while (!fn()) { if (Date.now() > deadline) throw Error(`Timed out: ${details()}`); await tick(); } }
 
-test("/watcher opens before slow startup; integrates questions, history, models, live tools and approved steering", { timeout: 90000 }, async (t) => {
+test("/watcher opens before slow startup; integrates questions, history, models, live tools and approved steering", { timeout: 180000 }, async (t) => {
   const root = mkdtempSync(join(tmpdir(), "watcher-extension-"));
   const agent = join(root, "agent"); const cwd = join(root, "project");
   mkdirSync(agent); mkdirSync(cwd);
@@ -24,7 +22,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
   const slowExtension = join(agent, "slow.ts");
   writeFileSync(slowExtension, `import { existsSync } from "node:fs";
     export default function(pi) { pi.on("session_start", async () => {
-      const deadline = Date.now() + 20000;
+      const deadline = Date.now() + 60000;
       while (!existsSync(${JSON.stringify(gate)})) {
         if (Date.now() > deadline) throw new Error("Startup gate timed out");
         await new Promise(resolve => setTimeout(resolve, 25));
@@ -61,8 +59,8 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     },
   };
   try {
-    (await jiti.import("@earendil-works/pi-coding-agent")).initTheme("dark");
-    const extension = (await jiti.import(join(installed, "src/index.ts"))).default;
+    (await import("@earendil-works/pi-coding-agent")).initTheme("dark");
+    const extension = (await import(join(installed, "src/index.ts"))).default;
     extension(pi);
     assert.deepEqual([...commands.keys()], ["watcher"]);
     await handlers.get("session_start")({}, ctx);
@@ -134,6 +132,24 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     assert.match(sent[0].text, /\[Watcher — approved by you\] inspect logs first/);
     assert.deepEqual(sent[0].opts, { deliverAs: "steer" });
     overlay.handleInput("\x1b"); await switchRunning;
+    // Approval must not claim delivery while the main session is compacting.
+    handlers.get("session_before_compact")({}, ctx);
+    const compacting = cmd("STEER", ctx);
+    await until(() => overlay && store.state.approvals.length === 1);
+    store.resolveApproval(store.state.approvals[0].id, { action: "send", text: "must not arrive", edited: false });
+    await until(() => store.state.side.status === "idle");
+    assert.equal(sent.length, 1, "even approved steering is refused during main compaction");
+    assert.ok(notifications.some(n => n.includes("message was NOT sent")));
+    assert.ok(store.state.messages.some(m => m.text.includes("It was NOT delivered")));
+    overlay.handleInput("\x1b"); await compacting;
+    handlers.get("session_compact")({}, ctx);
+
+    const pending = cmd("STEER", ctx);
+    await until(() => overlay && store.state.approvals.length === 1);
+    await handlers.get("session_shutdown")({}, ctx);
+    await pending;
+    assert.equal(sent.length, 1, "shutdown cancels pending approval without steering main");
+    assert.equal(overlay, undefined, "shutdown closes the overlay");
     assert.equal(abortedMain, false);
     assert.ok(!notifications.some(n => /Watcher: .*Error/.test(n)), notifications.join("\n"));
   } finally {

@@ -140,7 +140,9 @@ npm pack --dry-run --ignore-scripts
 
 `npm test` installs the direct Pi development dependencies at `@latest` with install scripts disabled, then runs `npm run check` and the tests. Tests target only the latest npm Pi release. Before each release, update the tested version above and the Pi peer dependency baseline after all checks pass. No lint command is configured.
 
-Tests use an offline scripted provider; no paid model calls are needed. They exercise the real RPC child, extension inheritance/exclusion, session resume, models, steering, main-extension integration, transport limits, live-tool cleanup, and overlay keyboard/rendering behavior.
+`npm test` uses an offline scripted provider; no paid model calls are needed. These tests exercise the real RPC child, extension inheritance/exclusion, session resume, models, steering, main-extension integration, transport limits, live-tool cleanup, and overlay keyboard/rendering behavior.
+
+For Evergreen, set `EVERGREEN_E2E_MODEL` to a configured `provider/model` and run `npm run test:evergreen`. It runs the suite above plus a real-model e2e test using `EVERGREEN_PI_BIN` (default: `pi` on PATH), with stdin ignored. The e2e host is the global Pi; its Watcher child uses the latest modular npm Pi development dependency. This test makes model calls, requires configured credentials, and checks main-history observation, live-tool access, read-only main history, and side-session restoration. See [EVERGREEN.md](EVERGREEN.md) for compatibility risks and coverage.
 
 These are automated tests, not a manual terminal smoke test. README snippets are not separately executed.
 
