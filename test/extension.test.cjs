@@ -1,18 +1,24 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { mkdtempSync, mkdirSync, cpSync, writeFileSync, rmSync } = require("node:fs");
+const { mkdtempSync, mkdirSync, cpSync, symlinkSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { createJiti } = require("jiti");
 const jiti = createJiti(__filename);
 const tick = () => new Promise(r => setTimeout(r, 20));
-async function until(fn) { const deadline = Date.now() + 20000; while (!fn()) { if (Date.now() > deadline) throw Error("Timed out"); await tick(); } }
+async function until(fn, details = () => "") { const deadline = Date.now() + 20000; while (!fn()) { if (Date.now() > deadline) throw Error(`Timed out: ${details()}`); await tick(); } }
 
 test("/watcher opens before slow startup; integrates questions, history, models, live tools and approved steering", { timeout: 90000 }, async (t) => {
   const root = mkdtempSync(join(tmpdir(), "watcher-extension-"));
   const agent = join(root, "agent"); const cwd = join(root, "project");
   mkdirSync(agent); mkdirSync(cwd);
-  // Put the inherited provider outside the watcher package, which is deliberately excluded.
+  // Model an installed package separate from the agent directory. The real package root
+  // excludes all descendants, including repository-local tmp fixtures.
+  const installed = join(root, "installed-watcher");
+  mkdirSync(installed);
+  cpSync(join(__dirname, "../src"), join(installed, "src"), { recursive: true });
+  cpSync(join(__dirname, "../package.json"), join(installed, "package.json"));
+  symlinkSync(join(__dirname, "../node_modules"), join(installed, "node_modules"), "junction");
   cpSync(join(__dirname, "fixtures/runtime/extensions/faux-provider.ts"), join(agent, "faux.ts"));
   const gate = join(root, "startup-release");
   const slowExtension = join(agent, "slow.ts");
@@ -56,7 +62,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
   };
   try {
     (await jiti.import("@earendil-works/pi-coding-agent")).initTheme("dark");
-    const extension = (await jiti.import(join(__dirname, "../src/index.ts"))).default;
+    const extension = (await jiti.import(join(installed, "src/index.ts"))).default;
     extension(pi);
     assert.deepEqual([...commands.keys()], ["watcher"]);
     await handlers.get("session_start")({}, ctx);
@@ -84,7 +90,8 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     await until(() => overlay);
     assert.equal(store.state.model, undefined, "question is queued, not sent, before startup completes");
     writeFileSync(gate, "ready");
-    await until(() => overlay && store.state.side.status === "idle" && store.state.messages.some(m => m.text === "echo: hello"));
+    await until(() => overlay && store.state.side.status === "idle" && store.state.messages.some(m => m.text === "echo: hello"),
+      () => JSON.stringify({ side: store.state.side, messages: store.state.messages, notifications }));
     assert.ok(!store.state.messages.some(m => m.text.includes("cancel me")), "cancelled startup question must never be sent");
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
     overlay.handleInput("\x1b"); await ask;

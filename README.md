@@ -10,7 +10,9 @@ A persistent side-agent conversation for your running [Pi](https://pi.dev) agent
 pi install npm:oira666_pi-watcher
 ```
 
-Then restart Pi or run `/reload`. Requires Node.js **22.19+** and the modular Pi installation. Tested against **Pi 1.0.4**; the child launcher depends on that version's package-manager loading interfaces. Standalone compiled Pi binaries are not supported.
+Then restart Pi or run `/reload`. Requires Node.js **22.19+** and the modular Pi installation. The child launcher uses Pi's package-manager loading interfaces. Standalone compiled Pi binaries are not supported.
+
+Tested against Pi 1.4.0.
 
 For local development:
 
@@ -131,11 +133,15 @@ Closing only the overlay leaves the side agent alive, including any inherited MC
 
 ```sh
 npm ci
-npm run check
-npm test
+mkdir -p tmp
+TMPDIR="$PWD/tmp" npm test
 npm pack --dry-run --ignore-scripts
 ```
 
+`npm test` installs the direct Pi development dependencies at `@latest` with install scripts disabled, then runs `npm run check` and the tests. Tests target only the latest npm Pi release. Before each release, update the tested version above and the Pi peer dependency baseline after all checks pass. No lint command is configured.
+
 Tests use an offline scripted provider; no paid model calls are needed. They exercise the real RPC child, extension inheritance/exclusion, session resume, models, steering, main-extension integration, transport limits, live-tool cleanup, and overlay keyboard/rendering behavior.
+
+These are automated tests, not a manual terminal smoke test. README snippets are not separately executed.
 
 The implementation is in `src/index.ts` (integration), `src/runtime*` (isolated child and RPC/IPC bridge), `src/live-tools.ts`, `src/config.ts`, and `src/ui*` (overlay).

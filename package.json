@@ -35,20 +35,21 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
+    "pretest": "npm install @earendil-works/pi-ai@latest @earendil-works/pi-agent-core@latest @earendil-works/pi-coding-agent@latest @earendil-works/pi-tui@latest --save-dev --ignore-scripts && npm run check",
     "test": "node --test test/*.test.ts test/*.test.cjs",
     "prepack": "npm run check && npm test"
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-agent-core": ">=1.4.0",
+    "@earendil-works/pi-ai": ">=1.4.0",
+    "@earendil-works/pi-coding-agent": ">=1.4.0",
+    "@earendil-works/pi-tui": ">=1.4.0"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "1.0.4",
-    "@earendil-works/pi-agent-core": "1.0.4",
-    "@earendil-works/pi-coding-agent": "1.0.4",
-    "@earendil-works/pi-tui": "1.0.4",
+    "@earendil-works/pi-agent-core": "^1.4.0",
+    "@earendil-works/pi-ai": "^1.4.0",
+    "@earendil-works/pi-coding-agent": "^1.4.0",
+    "@earendil-works/pi-tui": "^1.4.0",
     "@types/node": "^22.19.0",
     "jiti": "^2.6.1",
     "typescript": "^5.9.3"
