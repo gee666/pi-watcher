@@ -2,7 +2,7 @@
 
 A persistent side-agent conversation for your running [Pi](https://pi.dev) agent.
 
-**Package:** `oira666_pi-watcher` · **Version:** `0.0.6` · **License:** MIT
+**Package:** `oira666_pi-watcher` · **Version:** `0.0.9` · **License:** MIT
 
 ## Install
 
@@ -25,7 +25,6 @@ pi -e ./src/index.ts
 
 | Command | Action |
 | --- | --- |
-| **Alt+W** | Toggle the Watcher panel without sending a prompt or stopping either agent. |
 | `/watcher` | Create/resume the side agent and show its conversation. **Sends no prompt.** |
 | `/watcher Why is it retrying?` | Open and send exactly that question. |
 | `/watcher model` | Open the side agent's model picker. Does not prompt either agent. |
@@ -38,7 +37,7 @@ The panel opens immediately while the side process initializes its inherited ext
 Inside the overlay:
 
 - Type a question and press **Enter**. Use **Shift+Enter** for a newline.
-- **Alt+W** closes the panel from any Watcher view. Press it again to reopen. **Esc** also returns from chat to the main view without stopping either agent. Conversation, draft, and scroll position are retained.
+- **Esc** closes the conversation view without stopping either agent. In the model picker or an editor, it returns to the previous view. Use `/watcher` to reopen. Conversation, draft, and scroll position are retained.
 - `/model` opens a searchable provider/model picker. Its selection affects **only the side agent** and is persisted in that side conversation. You can change models while the side agent is running, just like in Pi; switching does not abort the current reply.
 - `/stop` cancels only the side agent and clears its queued messages.
 - `/copy` copies to the system clipboard, because terminal mouse selection spans the full terminal width. Messages are numbered in the transcript (`You #n`, `Watcher #n`):

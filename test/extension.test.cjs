@@ -66,11 +66,10 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     await handlers.get("session_start")({}, ctx);
     const cmd = commands.get("watcher").handler;
     const openedAt = performance.now();
-    assert.deepEqual([...shortcuts.keys()], ["alt+w"]);
-    const toggle = shortcuts.get("alt+w").handler;
-    await toggle({ ...ctx, mode: "rpc" });
+    assert.equal(shortcuts.size, 0, "Watcher must not register keyboard shortcuts");
+    await cmd("", { ...ctx, mode: "rpc" });
     assert.equal(overlay, undefined);
-    const first = toggle(ctx);
+    const first = cmd("", ctx);
     await until(() => overlay);
     t.diagnostic(`Cold overlay visible after ${Math.round(performance.now() - openedAt)} ms (child initialization still blocked)`);
     assert.equal(store.state.side.status, "starting", "panel must not await inherited extension initialization");
@@ -81,7 +80,7 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     for (const ch of "/stop") overlay.handleInput(ch);
     overlay.handleInput("\r");
     await until(() => store.state.side.status === "starting");
-    overlay.handleInput("\x1bw"); await first;
+    overlay.handleInput("\x1b"); await first;
     assert.equal(abortedMain, false);
 
     const ask = cmd("hello", ctx);
@@ -95,11 +94,11 @@ test("/watcher opens before slow startup; integrates questions, history, models,
     overlay.handleInput("\x1b"); await ask;
     assert.deepEqual(statusCalls, [], "Watcher must never touch the status bar");
     const savedStore = store;
-    const again = toggle(ctx); await until(() => overlay);
-    assert.equal(store, savedStore, "toggle must reuse the side conversation");
+    const again = cmd("", ctx); await until(() => overlay);
+    assert.equal(store, savedStore, "reopening must reuse the side conversation");
     assert.ok(store.state.messages.some(m => m.text === "echo: hello"));
     assert.equal(store.state.messages.filter(m => m.role === "user").length, 1);
-    await toggle(ctx); await again;
+    overlay.handleInput("\x1b"); await again;
     assert.equal(overlay, undefined);
 
     const choose = cmd("model", ctx); await until(() => overlay && overlay.mode === "model");

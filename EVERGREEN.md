@@ -1,6 +1,6 @@
 ## Summary
 - Watcher is a persistent, independent conversation for observing and steering a running main agent.
-- Opening, toggling, copying, and picking a model must not prompt or stop either agent.
+- Opening, closing, copying, and picking a model must not prompt or stop either agent.
 - Public touchpoints: extension commands/events/UI, session metadata, tool registration, and Pi RPC.
 - The child wraps exported package-manager implementation methods before extensions load.
 - Main history is read-only input; steering requires human approval and is refused during compaction.
@@ -14,7 +14,7 @@ unless explicitly requested. This is a prompt policy, not a sandbox. Never chang
 or its status bar. Closing the panel leaves the side conversation running.
 
 ## Pi integration (public APIs)
-`src/index.ts` registers `/watcher`, Alt+W, session/agent/tool/compaction handlers, and approved
+`src/index.ts` registers `/watcher`, session/agent/tool/compaction handlers, and approved
 `sendUserMessage(..., { deliverAs })`. It reads session ID/file/leaf, idle state, and project trust.
 The overlay uses `ctx.ui.custom`, native dialogs, clipboard helpers, themes, and pi-tui components.
 The child registers `live_main_tools`/`steer_main`, adds prompt sections in `before_agent_start`,
@@ -46,6 +46,8 @@ Unit tests cover bounded live state, prompt identity/policy, CLI filtering, JSON
 startup, inheritance/exclusions, nested Pi launches, isolated models, resume, approval refusal,
 session guards, locks, shutdown, and recovery. `extension.test.cjs` exercises command → overlay →
 RPC → approval → main delivery, including compaction refusal and shutdown cancellation.
+It also verifies that Watcher registers no keyboard shortcuts and that `/watcher` opens and reopens
+the panel without prompting or losing the side conversation.
 E2E launches `$EVERGREEN_PI_BIN` (or `pi` on PATH) with stdin ignored and uses
 `$EVERGREEN_E2E_MODEL` (required) for real main/side model calls. It verifies reading actual main
 history, live-tool access, unchanged main history, and exact side-history restoration after restart.
