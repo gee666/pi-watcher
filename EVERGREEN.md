@@ -21,6 +21,8 @@ The child registers `live_main_tools`/`steer_main`, adds prompt sections in `bef
 and persists its main-session link using `appendEntry`/session entries.
 RPC supplies prompts, state/history/models, queue clearing, abort, extension dialogs, and settlement.
 The package manifest exposes `src/index.ts`; credentials/settings/resources follow normal Pi loading.
+The bridge imports `Type` from host-provided `typebox` (also a development dependency), not pi-ai.
+Its tool parameters use plain JSON Schema supported by Pi's pi-schema validation.
 
 ## Internal Pi APIs
 Internal/undocumented coupling is present: `runtime-child.mjs` calls exported CLI `main()` and
@@ -57,5 +59,7 @@ The child uses the latest modular npm Pi from devDependencies, even with a stand
 ## Relevant changelog topics
 Watch extension loading/package-manager resources, CLI entry/layout/flags, trust and built-in MCP;
 RPC framing/dialogs/settlement; session JSONL/resume/tools and model persistence; steering/compaction;
-TUI key parsing, overlay focus/disposal, and clipboard support. Pi 1.4.0 includes relevant fixes for
-concurrent dialogs and resumed extension-tool activation. Tested against Pi 1.4.0.
+TUI key parsing, overlay focus/disposal, and clipboard support. Pi 1.5.0 removes published pi-ai
+TypeBox exports while retaining loader compatibility. Its package refresh/retry, session-write,
+deferred editor replacement, and compaction OAuth fixes require no Watcher-specific workaround.
+Tested against Pi 1.5.0.

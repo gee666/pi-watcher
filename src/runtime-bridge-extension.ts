@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { buildWatcherSystemPrompt, WATCHER_SECTION_KEY } from "./runtime-prompt.ts";
 import {

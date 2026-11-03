@@ -12,7 +12,7 @@ pi install npm:oira666_pi-watcher
 
 Then restart Pi or run `/reload`. Requires Node.js **22.19+** and the modular Pi installation. The child launcher uses Pi's package-manager loading interfaces. Standalone compiled Pi binaries are not supported.
 
-Tested against Pi 1.4.0.
+Tested against Pi 1.5.0.
 
 For local development:
 
