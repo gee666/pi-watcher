@@ -46,7 +46,8 @@ then `test/e2e/watcher.test.ts`. No lint script is configured.
 Unit tests cover bounded live state, prompt identity/policy, CLI filtering, JSONL transport, and UI.
 `runtime-integration.test.ts` uses real RPC children and an offline provider to protect prompt-free
 startup, inheritance/exclusions, nested Pi launches, isolated models, resume, approval refusal,
-session guards, locks, shutdown, and recovery. `extension.test.cjs` exercises command → overlay →
+session guards, locks, shutdown, and recovery. Busy reload is refused; RPC abort cancels
+in-flight bridge calls before an idle reload succeeds. `extension.test.cjs` exercises command → overlay →
 RPC → approval → main delivery, including compaction refusal and shutdown cancellation.
 It also verifies that Watcher registers no keyboard shortcuts and that `/watcher` opens and reopens
 the panel without prompting or losing the side conversation.
@@ -62,4 +63,9 @@ RPC framing/dialogs/settlement; session JSONL/resume/tools and model persistence
 TUI key parsing, overlay focus/disposal, and clipboard support. Pi 1.5.0 removes published pi-ai
 TypeBox exports while retaining loader compatibility. Its package refresh/retry, session-write,
 deferred editor replacement, and compaction OAuth fixes require no Watcher-specific workaround.
-Tested against Pi 1.5.0.
+Pi 1.5.1 refuses reload during responses/compaction and waits for tool abort/results before
+runtime disposal; cancellation tests must not depend on a busy reload reaching session_shutdown.
+Its RPC shutdown/cleanup, overlay disposal/blocked status, async-hook serialization, stable model
+selection, and package-update result progress events require no Watcher runtime workaround:
+Watcher patches resource resolution, not PackageManager.update or its progress events.
+Tested against Pi 1.5.1.

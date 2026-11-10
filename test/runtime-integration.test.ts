@@ -215,8 +215,9 @@ describe("WatcherRuntime (integration)", { skip: !piAvailable && "pi package not
 		}
 	});
 
-	test("bridge shutdown cancels in-flight calls; call ids are UUIDs", { timeout: TIMEOUT * 2 }, async () => {
+	test("busy reload is refused; abort cancels bridge calls; call ids are UUIDs", { timeout: TIMEOUT * 2 }, async () => {
 		const callIds: string[] = [];
+		const errors: string[] = [];
 		let signalAborted: () => void = () => {};
 		const aborted = new Promise<void>((r) => {
 			signalAborted = r;
@@ -235,15 +236,21 @@ describe("WatcherRuntime (integration)", { skip: !piAvailable && "pi package not
 		);
 		rt.subscribe((e) => {
 			if (e.type === "bridge" && e.phase === "start") callIds.push(e.callId);
+			if (e.type === "extension_error") errors.push(e.error ?? "");
 		});
 		try {
 			assert.equal(await rt.prompt("LIVE"), "started");
 			while (callIds.length === 0) await new Promise((r) => setTimeout(r, 20));
 			assert.match(callIds[0]!, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-			// An extension reload in the child shuts the old bridge down (session_shutdown → detach)
-			// while the tool call is still in flight; the detach must cancel it in the parent.
-			await rt.send({ type: "prompt", message: "/fixture-reload" }).catch(() => undefined);
+			// Pi refuses reload during a response; cancel through the tool's abort signal instead.
+			assert.equal(await rt.prompt("/fixture-reload"), "handled");
+			assert.match(errors.join("\n"), /reload/i);
+			await rt.abort();
 			await Promise.race([aborted, new Promise((_, rej) => setTimeout(() => rej(new Error("no cancel")), 10_000))]);
+			await rt.waitForSettled();
+			const errorCount = errors.length;
+			assert.equal(await rt.prompt("/fixture-reload"), "handled");
+			assert.equal(errors.length, errorCount, "idle reload must succeed without extension errors");
 		} finally {
 			await rt.dispose();
 		}
