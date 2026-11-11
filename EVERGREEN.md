@@ -39,6 +39,9 @@ Session replacement, reload, startup cancellation, approval, and child exit must
 RPC message framing, event names, model persistence, and compaction delivery boundaries matter.
 Inherited extensions can start work/processes; exclusion is essential and permissions remain inherited.
 UI tests simulate terminal components; e2e does not drive an actual interactive PTY or clipboard.
+An existing side session whose stored cwd was deleted cannot resume in RPC mode: Pi rejects it
+without an interactive Continue/Fork choice. Watcher reports the startup error; it does not rewrite
+session headers or silently fork history.
 
 ## Tests
 `npm run test:evergreen` runs `npm test` (latest Pi dependencies, TypeScript check, unit/integration),
@@ -68,4 +71,11 @@ runtime disposal; cancellation tests must not depend on a busy reload reaching s
 Its RPC shutdown/cleanup, overlay disposal/blocked status, async-hook serialization, stable model
 selection, and package-update result progress events require no Watcher runtime workaround:
 Watcher patches resource resolution, not PackageManager.update or its progress events.
-Tested against Pi 1.5.1.
+Pi 1.5.2 adds missing-cwd Continue/Fork/Cancel to interactive session selection. Watcher uses the
+active `ctx.cwd`, main ID/file, and `session_start`, not the main header's stored cwd: Continue
+retains the main identity; Fork gets a distinct side ID. Integration coverage checks a missing
+main-header cwd and side restart without changing the main file. The child still uses
+`--session-dir`/`--session-id`; copied `--session <file>` commands follow Pi's interactive choices.
+Watcher does not call `/import` or implement session copying, so Pi's failed-import cleanup and
+duplicate-file fixes need no workaround. Interactive missing-cwd dialogs are not PTY-tested.
+Tested against Pi 1.5.2.

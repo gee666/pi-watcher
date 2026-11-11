@@ -55,6 +55,27 @@ describe("WatcherRuntime (integration)", { skip: !piAvailable && "pi package not
 	});
 	after(() => sb?.cleanup());
 
+	test("uses the active cwd and preserves identity when the main session's stored cwd is missing", { timeout: TIMEOUT * 2 }, async () => {
+		const moved = createSandbox();
+		const rt = new WatcherRuntime();
+		try {
+			const header = { type: "session", version: 3, id: moved.mainSessionId,
+				timestamp: new Date().toISOString(), cwd: join(moved.root, "removed-project") };
+			writeFileSync(moved.mainSessionFile, `${JSON.stringify(header)}\n`);
+			const info = await rt.start(baseOptions(moved));
+			assert.equal(info.cwd, moved.cwd);
+			assert.equal(info.sideSessionId, `watcher-${moved.mainSessionId}`);
+			await ask(rt, "continued-main");
+			const resumed = await rt.restart();
+			assert.equal(resumed.sideSessionFile, info.sideSessionFile);
+			assert.equal(resumed.sideSessionId, info.sideSessionId);
+			assert.equal(readFileSync(moved.mainSessionFile, "utf8"), `${JSON.stringify(header)}\n`);
+		} finally {
+			await rt.dispose();
+			moved.cleanup();
+		}
+	});
+
 	test("starts without prompting, excludes watcher + configured extensions, inherits others, bridges tools", { timeout: TIMEOUT * 3 }, async () => {
 		const events: WatcherRuntimeEvent[] = [];
 		const steerRequests: SteerMainRequest[] = [];

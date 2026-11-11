@@ -25,7 +25,8 @@ export function deriveSideSessionId(mainSessionId: string): string {
 /**
  * One-line shell command that opens the side session in another terminal: `pi --session <file>`.
  * A file path (not an id) opens that exact session from any directory; pi switches to the
- * session's cwd. The home directory is shown as `~` when that stays shell-safe, else single-quoted.
+ * session's cwd, or offers Continue/Fork/Cancel if that directory is missing (Pi 1.5.2).
+ * The home directory is shown as `~` when that stays shell-safe, else single-quoted.
  */
 export function formatSideSessionCommand(sessionFile: string, home = homedir()): string {
 	const safe = /^[A-Za-z0-9_@%+=:,./-]+$/;
